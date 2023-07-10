@@ -14,4 +14,4 @@ I was going to initially use GNU-EFI and GCC for this project however i decided 
 - OVMF -  ```sudo apt install ovmf```
 
 
-#Creating a Hello World EFI Program
+# Creating a Hello World EFI Program
