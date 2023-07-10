@@ -15,3 +15,7 @@ I was going to initially use GNU-EFI and GCC for this project however i decided 
 
 
 # Creating a Hello World EFI Program
+
+To begin writing a bootloader I needed to write a simple "Hello World!" program, at this point I had no clue what I was doing but eventually after researching and reading the UEFI specification and a few examples online I managed to write a hello world EFI program:
+
+
