@@ -8,7 +8,7 @@ A UEFI Bootloader made for Linux
 I was going to initially use GNU-EFI and GCC for this project however i decided to use the following tools for more flexability:
 
 - [UEFI Specification (Might be outdated depending on when your reading this)](https://uefi.org/sites/default/files/resources/UEFI_Spec_2_10_Aug29.pdf)
-- Clang
-- LLVM Linker
-- Qemu
-- OVMF
+- Clang - ```sudo apt install clang```
+- LLVM Linker - ```sudo apt install lld```
+- Qemu - ```sudo apt install qemu-system```
+- OVMF -  ```sudo apt install ovmf```
