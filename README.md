@@ -1,5 +1,5 @@
 # Unified Extensible Firmware Interface (UEFI) Linux Bootloader
-A UEFI Bootloader made for Linux and small tutorial in case you want to make one yourself.
+A UEFI Bootloader made for Linux, below i detail the development process.
 
 
 # Tools and Resources
