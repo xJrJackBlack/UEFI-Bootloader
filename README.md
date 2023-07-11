@@ -16,6 +16,17 @@ I was going to initially use GNU-EFI and GCC for this project however i decided 
 
 # Creating a Hello World EFI Program
 
-To begin writing a bootloader I needed to write a simple "Hello World!" program, at this point I had no clue what I was doing but eventually after researching and reading the UEFI specification and a few examples online I managed to write a hello world EFI program:
+To begin writing a bootloader I needed to write a simple "Hello World!" program, In order to do this I created a header file with the necessary structure and type definitions as per the UEFI Specification. 
 
+```
+#include "uefi_structures.h"
+
+EFI_STATUS
+EFIAPI
+efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
+{
+    EFI_STATUS Status = SystemTable->ConOut->OutputString(SystemTable->ConOut, L"Welcome to Qasim's Simple UEFI Bootloader.\n");
+    return Status;
+}
+```
 
