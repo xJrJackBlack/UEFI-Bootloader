@@ -16,7 +16,7 @@ I was going to initially use GNU-EFI and GCC for this project however i decided 
 
 # Creating a Hello World EFI Program
 
-To begin writing a bootloader I needed to write a simple "Hello World!" program, In order to do this I created a header file with the necessary definitions as per the UEFI Specification. By creating this header it gives us (the programmer) an easy way to interface with the computers underlying UEFI firmware and access it's functions and runtime services.
+To begin writing a bootloader I needed to write a simple "Hello World!" program, In order to do this I created a header file with the necessary definitions as per the UEFI Specification. By creating this header it gives us (the programmer) an easy way to interface with the computers underlying UEFI firmware and access it's functions and runtime services. I defined everything in the [uefi_structures.h](https://github.com/user/repo/blob/branch/other_file.md)
 
 ```
 #include "uefi_structures.h"
