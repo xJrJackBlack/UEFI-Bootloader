@@ -2,9 +2,8 @@
 
 #include "uefi_structures.h"
 
-void setTextPosition(EFI_SYSTEM_TABLE *SystemTable, UINT32 Row, UINT32 Col)
+void setTextPosition(EFI_SYSTEM_TABLE *SystemTable, UINT32 Col, UINT32 Row)
 {
-
      SystemTable->ConOut->SetCursorPosition(SystemTable->ConOut, Col, Row);
 }
 
@@ -54,4 +53,9 @@ void borderOutline(EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop, EFI_GRAPHICS_OUTPUT_BLT_PI
           setPixel(Gop, Width - 1 - 10, Y, Colour); // Right outer pixel
           setPixel(Gop, Width - 2 - 10, Y, Colour); // Right inner pixel
      }
+}
+
+void getNumRowAndCol(EFI_SYSTEM_TABLE *SystemTable, UINTN *Cols, UINTN *Rows)
+{
+     SystemTable->ConOut->QueryMode(SystemTable->ConOut, SystemTable->ConOut->Mode->Mode, Cols, Rows);
 }
