@@ -9,25 +9,21 @@ void setTextPosition(EFI_SYSTEM_TABLE *SystemTable, UINT32 Col, UINT32 Row)
 
 void Print(EFI_SYSTEM_TABLE *SystemTable, CHAR16 *String)
 {
-
      SystemTable->ConOut->OutputString(SystemTable->ConOut, String);
 }
 
 void clearScreen(EFI_SYSTEM_TABLE *SystemTable)
 {
-
      SystemTable->ConOut->Reset(SystemTable->ConOut, 1);
 }
 
 void setTextColour(EFI_SYSTEM_TABLE *SystemTable, UINTN Attribute)
 {
-
      SystemTable->ConOut->SetAttribute(SystemTable->ConOut, Attribute);
 }
 
 void setPixel(EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop, UINT32 x, UINT32 y, EFI_GRAPHICS_OUTPUT_BLT_PIXEL *Colour)
 {
-
      Gop->Blt(Gop, Colour, EfiBltVideoFill, 0, 0, x, y, 1, 1, 0);
 }
 
@@ -36,6 +32,9 @@ void borderOutline(EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop)
      /*
         This function creates a two pixel wide border on the screen
         with a 10 pixel margin from the edge
+
+        Make sure to call SystemTable->BootServices->LocateProtocol(&EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID, NULL, (VOID **)&Gop);
+        before using this function
      */
 
      EFI_GRAPHICS_OUTPUT_BLT_PIXEL WhitePixel = {255, 255, 255, 0};
@@ -67,7 +66,10 @@ void getNumRowAndCol(EFI_SYSTEM_TABLE *SystemTable, UINTN *Cols, UINTN *Rows)
 
 void printOptions(EFI_SYSTEM_TABLE *SystemTable, EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop)
 {
-     SystemTable->BootServices->LocateProtocol(&EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID, NULL, (VOID **)&Gop);
+     /*
+        Make sure to call SystemTable->BootServices->LocateProtocol(&EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID, NULL, (VOID **)&Gop);
+        before using this function
+     */
 
      UINTN TextCols;
      UINTN TextRows;
@@ -84,4 +86,71 @@ void printOptions(EFI_SYSTEM_TABLE *SystemTable, EFI_GRAPHICS_OUTPUT_PROTOCOL *G
 
      setTextPosition(SystemTable, 0, TextRows - 2); // move cursor down
      Print(SystemTable, L"[Press 's' to shutdown]\n");
+}
+
+void COLD_REBOOT(EFI_SYSTEM_TABLE *SystemTable)
+{
+     SystemTable->RuntimeServices->ResetSystem(EfiResetCold, EFI_SUCCESS, 0, NULL);
+}
+
+void SHUTDOWN(EFI_SYSTEM_TABLE *SystemTable)
+{
+     SystemTable->RuntimeServices->ResetSystem(EfiResetShutdown, EFI_SUCCESS, 0, NULL);
+}
+
+void printNum(EFI_SYSTEM_TABLE *SystemTable, UINTN num)
+{
+     CHAR16 Buffer[16];
+     UINTN i = 0;
+
+     while (num)
+     {
+          Buffer[i++] = (num % 10) + '0';
+          num /= 10;
+     }
+
+     Buffer[i] = '\0';
+
+     UINTN left = 0;
+     UINTN right = i - 1;
+
+     while (left < right)
+     {
+          CHAR16 tmp = Buffer[left];
+          Buffer[left++] = Buffer[right];
+          Buffer[right--] = tmp;
+     }
+
+     Print(SystemTable, Buffer);
+}
+
+void printTime(EFI_SYSTEM_TABLE *SystemTable)
+{
+     EFI_TIME currentTime;
+     SystemTable->RuntimeServices->GetTime(&currentTime, NULL);
+
+     Print(SystemTable, L"Current Time: ");
+     printNum(SystemTable, currentTime.Day);
+     Print(SystemTable, L"/");
+     printNum(SystemTable, currentTime.Month);
+     Print(SystemTable, L"/");
+     printNum(SystemTable, currentTime.Year);
+
+     Print(SystemTable, L"  ");
+
+     printNum(SystemTable, currentTime.Hour);
+     Print(SystemTable, L":");
+     printNum(SystemTable, currentTime.Minute);
+     Print(SystemTable, L":");
+     printNum(SystemTable, currentTime.Second);
+     Print(SystemTable, L"\n");
+}
+
+void printUEFIVersion(EFI_SYSTEM_TABLE *SystemTable)
+{
+     Print(SystemTable, L"UEFI Version: ");
+     printNum(SystemTable, SystemTable->Hdr.Revision >> 16);
+     Print(SystemTable, L".");
+     printNum(SystemTable, SystemTable->Hdr.Revision & 0XFFFF);
+     Print(SystemTable, L"\n");
 }
