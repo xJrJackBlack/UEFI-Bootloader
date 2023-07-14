@@ -55,10 +55,7 @@ typedef struct
     UINT8 Data4[8];
 } EFI_GUID;
 
-#define EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID                                              \
-    {                                                                                  \
-        0x9042A9DE, 0x23DC, 0x4A38, { 0x96, 0xFB, 0x7A, 0xDE, 0xD0, 0x80, 0x51, 0x6a } \
-    }
+EFI_GUID EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID = { 0x9042A9DE, 0x23DC, 0x4A38, {0x96, 0xFB, 0x7A, 0xDE, 0xD0, 0x80, 0x51, 0x6A} };
 
 #define EFI_EDID_ACTIVE_PROTOCOL_GUID                                                  \
     {                                                                                  \
@@ -904,6 +901,13 @@ typedef struct
 
 typedef struct _EFI_GRAPHICS_OUTPUT_PROTOCOL EFI_GRAPHICS_OUTPUT_PROTOCOL;
 
+typedef struct {
+  UINT8 Blue;
+  UINT8 Green;
+  UINT8 Red;
+  UINT8 Reserved;
+} EFI_GRAPHICS_OUTPUT_BLT_PIXEL;
+
 typedef struct
 {
     UINT32 RedMask;
@@ -950,14 +954,6 @@ typedef EFI_STATUS(EFIAPI *EFI_GRAPHICS_OUTPUT_PROTOCOL_QUERY_MODE)(
 typedef EFI_STATUS(EFIAPI *EFI_GRAPHICS_OUTPUT_PROTOCOL_SET_MODE)(
     IN EFI_GRAPHICS_OUTPUT_PROTOCOL *This,
     IN UINT32 ModeNumber);
-
-typedef struct
-{
-    UINT8 Blue;
-    UINT8 Green;
-    UINT8 Red;
-    UINT8 Reserved;
-} EFI_GRAPHICS_OUTPUT_BLT_PIXEL;
 
 typedef enum
 {

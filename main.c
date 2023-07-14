@@ -8,13 +8,21 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     EFI_STATUS Status;
 
     clearScreen(SystemTable); // clear screen
+    
+    EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop;
+    EFI_GRAPHICS_OUTPUT_BLT_PIXEL WhitePixel = {255, 255, 255, 0};
+    SystemTable->BootServices->LocateProtocol(&EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID, NULL, (VOID**)&Gop);
+
+    UINTN Width  = Gop->Mode->Info->HorizontalResolution;
+    UINTN Height = Gop->Mode->Info->VerticalResolution;
+    borderOutline(Gop, &WhitePixel, Width, Height);
 
     setTextColour(SystemTable, EFI_YELLOW);
     setTextPosition(SystemTable, 3, 2);
     Print(SystemTable, L"Welcome to the Simple UEFI Bootloader.\n\n");
 
     setTextColour(SystemTable, EFI_LIGHTCYAN);
-    setTextPosition(SystemTable, 3, 5);
+    setTextPosition(SystemTable, 4, 2);
     Print(SystemTable, L"Press 'r' to reboot | Press 'b' to boot\n");
 
     SystemTable->ConIn->Reset(SystemTable->ConIn, 1); // clear keyboard buffer
