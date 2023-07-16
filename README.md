@@ -50,9 +50,9 @@ The bootloader uses a configuration file which is reads to determine which kerne
 - The configuration file should be named 'simple.cfg' and placed in the root of the EFI partition
 - The configuration file should contain a single line in the following format:
 ```LinuxKernelImageName#InitRDFileName```
-- LinuxKernelImageName should be the name of the kernel image
+- ```LinuxKernelImageName``` should be the name of the kernel image
 - Next it should be followed by a single hash ```#```
-- InitRDFileName should be the name of the initramfs file name
+- ```InitRDFileName``` should be the name of the initramfs file name
 
 
 
