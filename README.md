@@ -39,8 +39,8 @@ Whilst developing this I utilised Qemu which is a free and open-source emulator 
 our bootloader needs and is correctly structured for the computer to find and run the bootloader.
 4) Format the disk with FAT32 filesystem - ```sudo mkfs.vfat -F 32 disk.img```
 5) Mount the disk - ```sudo mount -o loop disk.img mnt```
-6) Structure the disk
-7) Launch qemu
+6) Structure the disk - ```cd mnt``` - ```touch simple.cfg``` - ```mkdir -p EFI/BOOT```
+7) Launch qemu ```qemu-system-x86_64 -bios /usr/share/OVMF/OVMF_CODE.fd -hda disk.img```
 
 
 # Bootloader configuration file
