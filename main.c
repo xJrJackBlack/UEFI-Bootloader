@@ -27,11 +27,11 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
         }
     } while (Status == EFI_NOT_READY || !(Key.UnicodeChar == L'r' || Key.UnicodeChar == L'R' || Key.UnicodeChar == L'b' || Key.UnicodeChar == L'B'));
 
-    EFI_FILE_PROTOCOL *vol = GetVolume(SystemTable, ImageHandle); // Open EFI FAT32 filesystem
-    EFI_FILE_PROTOCOL *file;
+    EFI_FILE_PROTOCOL *Volume = GetVolume(SystemTable, ImageHandle);            // Open EFI FAT32 filesystem
+    Delay(SystemTable, 2);
+    checkForConfigFile(SystemTable, Volume);                                  // Check if 'simple.cfg' exists
+    //CHAR16 *file_names = getKernelImageAndInitRamFSName(SystemTable, Volume); // Read and parse 'simple.cfg' for kernel image and initramfs file names
 
-    checkForConfigFile(SystemTable, vol);
-    //SystemTable->BootServices->Stall(100000 * 20);
 
     return 0;
 }

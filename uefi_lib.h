@@ -163,27 +163,28 @@ void printUEFIVersion(EFI_SYSTEM_TABLE *SystemTable)
      Print(SystemTable, L"\n");
 }
 
-void printIntroduction(EFI_SYSTEM_TABLE *SystemTable) {
+void printIntroduction(EFI_SYSTEM_TABLE *SystemTable)
+{
 
-    EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop;
-    SystemTable->BootServices->LocateProtocol(&EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID, NULL, (VOID **)&Gop);
+     EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop;
+     SystemTable->BootServices->LocateProtocol(&EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID, NULL, (VOID **)&Gop);
 
-    clearScreen(SystemTable); // Clear screen
-    borderOutline(Gop);       // Create white border
+     clearScreen(SystemTable); // Clear screen
+     borderOutline(Gop);       // Create white border
 
-    setTextPosition(SystemTable, 4, 2);
-    Print(SystemTable, L"Welcome to the SIMPLE Bootloader\n"); // Print Hello message
+     setTextPosition(SystemTable, 4, 2);
+     Print(SystemTable, L"Welcome to the SIMPLE Bootloader\n"); // Print Hello message
 
-    setTextPosition(SystemTable, 4, 3);
-    printTime(SystemTable); // Print current time
+     setTextPosition(SystemTable, 4, 3);
+     printTime(SystemTable); // Print current time
 
-    setTextPosition(SystemTable, 4, 4);
-    printUEFIVersion(SystemTable); // Print UEFI version
+     setTextPosition(SystemTable, 4, 4);
+     printUEFIVersion(SystemTable); // Print UEFI version
 
-    setTextColour(SystemTable, EFI_YELLOW);
-    printOptions(SystemTable, Gop);   // Print Bootloader options
-    clearKeyboardBuffer(SystemTable); // clear keyboard buffer
-} 
+     setTextColour(SystemTable, EFI_YELLOW);
+     printOptions(SystemTable, Gop);   // Print Bootloader options
+     clearKeyboardBuffer(SystemTable); // clear keyboard buffer
+}
 
 EFI_FILE_PROTOCOL *GetVolume(EFI_SYSTEM_TABLE *SystemTable, EFI_HANDLE ImageHandle)
 {
@@ -192,6 +193,10 @@ EFI_FILE_PROTOCOL *GetVolume(EFI_SYSTEM_TABLE *SystemTable, EFI_HANDLE ImageHand
        and return a pointer to the volume
      */
 
+     clearScreen(SystemTable);
+     clearKeyboardBuffer(SystemTable);
+
+     EFI_STATUS Status;
      EFI_LOADED_IMAGE_PROTOCOL *LoadedImage = NULL;
      EFI_GUID LipGUID = EFI_LOADED_IMAGE_PROTOCOL_GUID;
 
@@ -201,8 +206,23 @@ EFI_FILE_PROTOCOL *GetVolume(EFI_SYSTEM_TABLE *SystemTable, EFI_HANDLE ImageHand
      EFI_FILE_PROTOCOL *RootVolume = NULL;
 
      SystemTable->BootServices->HandleProtocol(ImageHandle, &LipGUID, (void **)&LoadedImage);
+
      SystemTable->BootServices->HandleProtocol(LoadedImage->DeviceHandle, &FsGUID, (void **)&FileSystem);
-     FileSystem->OpenVolume(FileSystem, &RootVolume);
+
+     Status = FileSystem->OpenVolume(FileSystem, &RootVolume);
+
+     if (Status != EFI_SUCCESS)
+     {
+          clearScreen(SystemTable);
+          setTextColour(SystemTable, EFI_RED);
+          Print(SystemTable, L"FATAL ERROR: Failed to open Volume.\n");
+          Delay(SystemTable, 5);
+     }
+     else
+     {
+          Print(SystemTable, L"Opened filesystem.");
+          Delay(SystemTable, 2);
+     }
 
      return RootVolume;
 }
@@ -218,7 +238,7 @@ BOOLEAN checkForConfigFile(EFI_SYSTEM_TABLE *SystemTable, EFI_FILE_PROTOCOL *Vol
      EFI_FILE_PROTOCOL *file;
      Status = Volume->Open(Volume, &file, L"simple.cfg", EFI_FILE_READ_ONLY, 0);
 
-     if (EFI_ERROR(Status))
+     if (Status != EFI_SUCCESS)
      {
           clearScreen(SystemTable);
           setTextColour(SystemTable, EFI_RED);
@@ -226,12 +246,12 @@ BOOLEAN checkForConfigFile(EFI_SYSTEM_TABLE *SystemTable, EFI_FILE_PROTOCOL *Vol
           Delay(SystemTable, 5);
           return FALSE;
      }
+     else
+     {
+          Print(SystemTable, L"-- Opened config file 'simple.cfg'.\n");
+          Delay(SystemTable, 2);
+     }
 
      return TRUE;
 }
 
-CHAR16 *getKernelImageName(EFI_SYSTEM_TABLE *SystemTable, EFI_FILE_PROTOCOL *Volume) {
-
-     EFI_FILE_PROTOCOL *file = Volume->Open(Volume, &file, L"simple.cfg", EFI_FILE_READ_ONLY, 0);
-
-}
