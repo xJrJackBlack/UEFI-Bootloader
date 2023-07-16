@@ -43,6 +43,15 @@ our bootloader needs and is correctly structured for the computer to find and ru
 7) Launch qemu
 
 
+# Bootloader configuration file
+
+The bootloader uses a configuration file which is reads to determine which kernel image and initramfs image to use:
+
+- The configuration file should be named 'simple.cfg' and placed in the root of the EFI partition
+- The first line of the configuration file should be the exact name of the kernel image
+- The second line of the configuration file should be the exact name of the initramfs image
+
+
 
 
 
