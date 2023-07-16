@@ -14,7 +14,13 @@ void Print(EFI_SYSTEM_TABLE *SystemTable, CHAR16 *String)
 
 void clearScreen(EFI_SYSTEM_TABLE *SystemTable)
 {
-     SystemTable->ConOut->Reset(SystemTable->ConOut, 1);
+     SystemTable->ConOut->ClearScreen(SystemTable->ConOut);
+}
+
+void clearKeyboardBuffer(EFI_SYSTEM_TABLE *SystemTable)
+{
+
+     SystemTable->ConIn->Reset(SystemTable->ConIn, 1);
 }
 
 void setTextColour(EFI_SYSTEM_TABLE *SystemTable, UINTN Attribute)
@@ -75,11 +81,8 @@ void printOptions(EFI_SYSTEM_TABLE *SystemTable, EFI_GRAPHICS_OUTPUT_PROTOCOL *G
      UINTN TextRows;
 
      getNumRowAndCol(SystemTable, &TextCols, &TextRows);
-     setTextPosition(SystemTable, 0, TextRows - 5); // adjust the row number for each option
+     setTextPosition(SystemTable, 0, TextRows - 4); // adjust the row number for each option
      Print(SystemTable, L"[Press 'b' to boot]\n");
-
-     setTextPosition(SystemTable, 0, TextRows - 4); // move cursor down
-     Print(SystemTable, L"[Press 'i' to print system specs]\n");
 
      setTextPosition(SystemTable, 0, TextRows - 3); // move cursor down
      Print(SystemTable, L"[Press 'r' to reboot]\n");
@@ -96,6 +99,11 @@ void COLD_REBOOT(EFI_SYSTEM_TABLE *SystemTable)
 void SHUTDOWN(EFI_SYSTEM_TABLE *SystemTable)
 {
      SystemTable->RuntimeServices->ResetSystem(EfiResetShutdown, EFI_SUCCESS, 0, NULL);
+}
+
+void Delay(EFI_SYSTEM_TABLE *SystemTable, UINTN Seconds)
+{
+     SystemTable->BootServices->Stall(1000000 * Seconds);
 }
 
 void printNum(EFI_SYSTEM_TABLE *SystemTable, UINTN num)
@@ -153,4 +161,77 @@ void printUEFIVersion(EFI_SYSTEM_TABLE *SystemTable)
      Print(SystemTable, L".");
      printNum(SystemTable, SystemTable->Hdr.Revision & 0XFFFF);
      Print(SystemTable, L"\n");
+}
+
+void printIntroduction(EFI_SYSTEM_TABLE *SystemTable) {
+
+    EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop;
+    SystemTable->BootServices->LocateProtocol(&EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID, NULL, (VOID **)&Gop);
+
+    clearScreen(SystemTable); // Clear screen
+    borderOutline(Gop);       // Create white border
+
+    setTextPosition(SystemTable, 4, 2);
+    Print(SystemTable, L"Welcome to the SIMPLE Bootloader\n"); // Print Hello message
+
+    setTextPosition(SystemTable, 4, 3);
+    printTime(SystemTable); // Print current time
+
+    setTextPosition(SystemTable, 4, 4);
+    printUEFIVersion(SystemTable); // Print UEFI version
+
+    setTextColour(SystemTable, EFI_YELLOW);
+    printOptions(SystemTable, Gop);   // Print Bootloader options
+    clearKeyboardBuffer(SystemTable); // clear keyboard buffer
+} 
+
+EFI_FILE_PROTOCOL *GetVolume(EFI_SYSTEM_TABLE *SystemTable, EFI_HANDLE ImageHandle)
+{
+     /*
+       Open the FAT32 formatted EFI partition using ImageHandle
+       and return a pointer to the volume
+     */
+
+     EFI_LOADED_IMAGE_PROTOCOL *LoadedImage = NULL;
+     EFI_GUID LipGUID = EFI_LOADED_IMAGE_PROTOCOL_GUID;
+
+     EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *FileSystem = NULL;
+     EFI_GUID FsGUID = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
+
+     EFI_FILE_PROTOCOL *RootVolume = NULL;
+
+     SystemTable->BootServices->HandleProtocol(ImageHandle, &LipGUID, (void **)&LoadedImage);
+     SystemTable->BootServices->HandleProtocol(LoadedImage->DeviceHandle, &FsGUID, (void **)&FileSystem);
+     FileSystem->OpenVolume(FileSystem, &RootVolume);
+
+     return RootVolume;
+}
+
+BOOLEAN checkForConfigFile(EFI_SYSTEM_TABLE *SystemTable, EFI_FILE_PROTOCOL *Volume)
+{
+     /*
+       Check if the simple.cfg configuration file exists, if it does not
+       then the bootloader won't know which kernel image to work with
+     */
+
+     EFI_STATUS Status;
+     EFI_FILE_PROTOCOL *file;
+     Status = Volume->Open(Volume, &file, L"simple.cfg", EFI_FILE_READ_ONLY, 0);
+
+     if (EFI_ERROR(Status))
+     {
+          clearScreen(SystemTable);
+          setTextColour(SystemTable, EFI_RED);
+          Print(SystemTable, L"FATAL ERROR: 'simple.cfg' file not found.");
+          Delay(SystemTable, 5);
+          return FALSE;
+     }
+
+     return TRUE;
+}
+
+CHAR16 *getKernelImageName(EFI_SYSTEM_TABLE *SystemTable, EFI_FILE_PROTOCOL *Volume) {
+
+     EFI_FILE_PROTOCOL *file = Volume->Open(Volume, &file, L"simple.cfg", EFI_FILE_READ_ONLY, 0);
+
 }
