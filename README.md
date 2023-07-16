@@ -37,7 +37,7 @@ Whilst developing this I utilised Qemu which is a free and open-source emulator 
 2) Installing OVMF - ```sudo apt-get install ovmf```, OVMF will provide our QEMU virtual machine with UEFI firmware
 3) Create an empty disk image file - ```dd if=/dev/zero of=disk.img bs=1M count=200```, Whilst developing a UEFI bootloader we need to emulate something known as a EFI partition (also known as ESP partition), this is a special partition which contains the necessary files
 our bootloader needs and is correctly structured for the computer to find and run the bootloader.
-4) Format the disk with FAT32 filesystem -
+4) Format the disk with FAT32 filesystem - ```sudo mkfs.vfat -F 32 disk.img```
 5) Mount the disk
 6) Structure the disk
 7) Launch qemu
