@@ -8,7 +8,7 @@ I was going to initially use GNU-EFI and GCC for this project however i decided 
 
 - Clang
 - LLVM Linker
-- Qemu
+- QEMU
 - OVMF
 
 
@@ -33,14 +33,14 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 
 Whilst developing this I utilised Qemu which is a free and open-source emulator to run my bootloader and test it. Below I will detail the setup process incase you want to develop your own bootloader:
 
-1) Installing Qemu - ```sudo apt-get install qemu```
+1) Installing QEMU - ```sudo apt-get install qemu```
 2) Installing OVMF - ```sudo apt-get install ovmf```, OVMF will provide our QEMU virtual machine with UEFI firmware
 3) Create an empty disk image file - ```dd if=/dev/zero of=disk.img bs=1M count=200```, Whilst developing a UEFI bootloader we need to emulate something known as a EFI partition (also known as ESP partition), this is a special partition which contains the necessary files
 our bootloader needs and is correctly structured for the computer to find and run the bootloader.
 4) Format the disk with FAT32 filesystem - ```sudo mkfs.vfat -F 32 disk.img```
 5) Mount the disk - ```sudo mount -o loop disk.img mnt```
 6) Structure the disk - ```cd mnt``` - ```touch simple.cfg``` - ```mkdir -p EFI/BOOT```
-7) Launch qemu ```qemu-system-x86_64 -bios /usr/share/OVMF/OVMF_CODE.fd -hda disk.img```
+7) Launch QEMU ```qemu-system-x86_64 -bios /usr/share/OVMF/OVMF_CODE.fd -hda disk.img```
 
 
 # Bootloader configuration file
