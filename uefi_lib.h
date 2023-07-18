@@ -175,14 +175,14 @@ void printIntroduction(EFI_SYSTEM_TABLE *SystemTable)
      setTextPosition(SystemTable, 4, 2);
      Print(SystemTable, L"Welcome to the SIMPLE Bootloader\n"); // Print Hello message
 
-     //setTextPosition(SystemTable, 4, 3);
-     //printTime(SystemTable); // Print current time
+     // setTextPosition(SystemTable, 4, 3);
+     // printTime(SystemTable); // Print current time
 
      setTextPosition(SystemTable, 4, 4);
      printUEFIVersion(SystemTable); // Print UEFI version
 
      setTextColour(SystemTable, EFI_YELLOW);
-     printOptions(SystemTable, Gop);   // Print Bootloader options
+     printOptions(SystemTable, Gop); // Print Bootloader options
 }
 
 EFI_FILE_PROTOCOL *GetVolume(EFI_SYSTEM_TABLE *SystemTable, EFI_HANDLE ImageHandle)
@@ -258,21 +258,61 @@ EFI_FILE_PROTOCOL *checkForConfigFile(EFI_SYSTEM_TABLE *SystemTable, EFI_FILE_PR
      return file;
 }
 
-UINT64 GetFileSize (EFI_FILE_PROTOCOL* FileName)
+UINT64 GetFileSize(EFI_FILE_PROTOCOL *FileName)
 {
-    UINT64 Size = 0;
-    FileName->SetPosition(FileName, 0xFFFFFFFFFFFFFFFFULL);
-    FileName->GetPosition(FileName, &Size);
-    FileName->SetPosition(FileName, 0);
-    return Size;
+     UINT64 Size = 0;
+     FileName->SetPosition(FileName, 0xFFFFFFFFFFFFFFFFULL);
+     FileName->GetPosition(FileName, &Size);
+     FileName->SetPosition(FileName, 0);
+     return Size;
 }
 
-void printAscii(EFI_SYSTEM_TABLE *SystemTable, UINT8 *str) {
-    while (*str != '\0') {
-        CHAR16 out[2];
-        out[0] = (CHAR16)*str;
-        out[1] = '\0';
-        Print(SystemTable, out);
-        str++;
-    }
+void printAscii(EFI_SYSTEM_TABLE *SystemTable, UINT8 *str)
+{
+     while (*str != '\0')
+     {
+          CHAR16 out[2];
+          out[0] = (CHAR16)*str;
+          out[1] = '\0';
+          Print(SystemTable, out);
+          str++;
+     }
+}
+
+UINT8 **parseConfigFile(EFI_SYSTEM_TABLE *SystemTable, VOID *FileContents, UINTN fileSize)
+{
+     UINT8 *fileContents = (UINT8 *)FileContents;
+     UINTN i = 0;
+
+     while (i < fileSize && fileContents[i] != '#')
+          ++i;
+
+     if (i == fileSize || i == 0 || i == fileSize-1)
+     {
+          clearScreen(SystemTable);
+          setTextColour(SystemTable, EFI_RED);
+          Print(SystemTable, L"FATAL ERROR: Invalid entry in 'simple.cfg'.");
+          Delay(SystemTable, 5);
+          return NULL;
+     }
+
+     UINT8 **names; // Array that holds the kernel image name and initrd file name
+     SystemTable->BootServices->AllocatePool(EfiLoaderData, sizeof(UINT8 *) * 2, (VOID **)&names);
+
+     UINT8 *name1;
+     UINT8 *name2;
+
+     SystemTable->BootServices->AllocatePool(EfiLoaderData, sizeof(UINT8) * i + 1, (VOID **)&name1); // Allocate memory for kernel image name
+     SystemTable->BootServices->CopyMem(name1, FileContents, sizeof(UINT8) * i);                     // Copy kernel image file name into name1 buffer
+
+     SystemTable->BootServices->AllocatePool(EfiLoaderData, sizeof(UINT8) * fileSize - i, (VOID **)&name2); // Allocate memory for initrd file name
+     SystemTable->BootServices->CopyMem(name2, FileContents + i + 1, sizeof(UINT8) * fileSize - i - 1);     // Copy initrd file name into name2 buffer
+
+     name1[i] = '\0';
+     name2[fileSize - i - 1] = '\0';
+
+     names[0] = name1;
+     names[1] = name2;
+
+     return names;
 }
