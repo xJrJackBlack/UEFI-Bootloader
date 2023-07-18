@@ -55,7 +55,7 @@ typedef struct
     UINT8 Data4[8];
 } EFI_GUID;
 
-EFI_GUID EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID = { 0x9042A9DE, 0x23DC, 0x4A38, {0x96, 0xFB, 0x7A, 0xDE, 0xD0, 0x80, 0x51, 0x6A} };
+EFI_GUID EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID = {0x9042A9DE, 0x23DC, 0x4A38, {0x96, 0xFB, 0x7A, 0xDE, 0xD0, 0x80, 0x51, 0x6A}};
 
 #define EFI_EDID_ACTIVE_PROTOCOL_GUID                                                  \
     {                                                                                  \
@@ -701,10 +701,7 @@ typedef struct
     VOID *VendorTable;
 } EFI_CONFIGURATION_TABLE;
 
-
-
-
-//Reboot 
+// Reboot
 
 typedef enum
 {
@@ -721,121 +718,107 @@ typedef void(EFIAPI *EFI_RESET_SYSTEM)(
     VOID *ResetData);
 
 // EFI_SET_VIRTUAL_ADDRESS_MAP
-typedef EFI_STATUS (EFIAPI *EFI_SET_VIRTUAL_ADDRESS_MAP)(
+typedef EFI_STATUS(EFIAPI *EFI_SET_VIRTUAL_ADDRESS_MAP)(
     UINTN MemoryMapSize,
     UINTN DescriptorSize,
     UINT32 DescriptorVersion,
-    EFI_MEMORY_DESCRIPTOR *VirtualMap
-);
+    EFI_MEMORY_DESCRIPTOR *VirtualMap);
 
 // EFI_CONVERT_POINTER
-typedef EFI_STATUS (EFIAPI *EFI_CONVERT_POINTER)(
+typedef EFI_STATUS(EFIAPI *EFI_CONVERT_POINTER)(
     UINTN DebugDisposition,
-    VOID **Address
-);
+    VOID **Address);
 
-typedef EFI_STATUS (EFIAPI *EFI_GET_VARIABLE)(
+typedef EFI_STATUS(EFIAPI *EFI_GET_VARIABLE)(
     CHAR16 *VariableName,
     EFI_GUID *VendorGuid,
     UINT32 *Attributes OPTIONAL,
     UINTN *DataSize,
-    VOID *Data
-);
+    VOID *Data);
 
-typedef EFI_STATUS (EFIAPI *EFI_GET_NEXT_VARIABLE_NAME)(
+typedef EFI_STATUS(EFIAPI *EFI_GET_NEXT_VARIABLE_NAME)(
     UINTN *VariableNameSize,
     CHAR16 *VariableName,
-    EFI_GUID *VendorGuid
-);
+    EFI_GUID *VendorGuid);
 
-typedef EFI_STATUS (EFIAPI *EFI_SET_VARIABLE)(
+typedef EFI_STATUS(EFIAPI *EFI_SET_VARIABLE)(
     CHAR16 *VariableName,
     EFI_GUID *VendorGuid,
     UINT32 Attributes,
     UINTN DataSize,
-    VOID *Data
-);
+    VOID *Data);
 
-typedef struct {
+typedef struct
+{
     EFI_GUID CapsuleGuid;
     UINT32 HeaderSize;
     UINT32 Flags;
     UINT32 CapsuleImageSize;
 } EFI_CAPSULE_HEADER;
 
-typedef EFI_STATUS (EFIAPI *EFI_GET_NEXT_HIGH_MONO_COUNT)(
-    UINT32 *HighCount
-);
+typedef EFI_STATUS(EFIAPI *EFI_GET_NEXT_HIGH_MONO_COUNT)(
+    UINT32 *HighCount);
 
-typedef void (EFIAPI *EFI_RESET_SYSTEM)(
+typedef void(EFIAPI *EFI_RESET_SYSTEM)(
     EFI_RESET_TYPE ResetType,
     EFI_STATUS ResetStatus,
     UINTN DataSize,
-    VOID *ResetData OPTIONAL
-);
+    VOID *ResetData OPTIONAL);
 
-typedef EFI_STATUS (EFIAPI *EFI_UPDATE_CAPSULE)(
+typedef EFI_STATUS(EFIAPI *EFI_UPDATE_CAPSULE)(
     EFI_CAPSULE_HEADER **CapsuleHeaderArray,
     UINTN CapsuleCount,
-    EFI_PHYSICAL_ADDRESS ScatterGatherList OPTIONAL
-);
+    EFI_PHYSICAL_ADDRESS ScatterGatherList OPTIONAL);
 
-typedef EFI_STATUS (EFIAPI *EFI_QUERY_CAPSULE_CAPABILITIES)(
+typedef EFI_STATUS(EFIAPI *EFI_QUERY_CAPSULE_CAPABILITIES)(
     EFI_CAPSULE_HEADER **CapsuleHeaderArray,
     UINTN CapsuleCount,
     UINT64 *MaximumCapsuleSize,
-    EFI_RESET_TYPE *ResetType
-);
+    EFI_RESET_TYPE *ResetType);
 
-typedef EFI_STATUS (EFIAPI *EFI_QUERY_VARIABLE_INFO)(
+typedef EFI_STATUS(EFIAPI *EFI_QUERY_VARIABLE_INFO)(
     UINT32 Attributes,
     UINT64 *MaximumVariableStorageSize,
     UINT64 *RemainingVariableStorageSize,
-    UINT64 *MaximumVariableSize
-);
+    UINT64 *MaximumVariableSize);
 
-
-
-typedef struct {
-    UINT16  Year;       // Year - 1900
-    UINT8   Month;      // Month (1-12)
-    UINT8   Day;        // Day of the month (1-31)
-    UINT8   Hour;       // Hour (0-23)
-    UINT8   Minute;     // Minute (0-59)
-    UINT8   Second;     // Second (0-59)
-    UINT8   Pad1;
-    UINT32  Nanosecond; // Nanosecond (0-999,999,999)
-    INT16   TimeZone;   // Timezone (-1440 to 1440 or 2047)
-    UINT8   Daylight;
-    UINT8   Pad2;
+typedef struct
+{
+    UINT16 Year;  // Year - 1900
+    UINT8 Month;  // Month (1-12)
+    UINT8 Day;    // Day of the month (1-31)
+    UINT8 Hour;   // Hour (0-23)
+    UINT8 Minute; // Minute (0-59)
+    UINT8 Second; // Second (0-59)
+    UINT8 Pad1;
+    UINT32 Nanosecond; // Nanosecond (0-999,999,999)
+    INT16 TimeZone;    // Timezone (-1440 to 1440 or 2047)
+    UINT8 Daylight;
+    UINT8 Pad2;
 } EFI_TIME;
 
-typedef struct {
-    UINT32  Resolution;     // 1 to 1,000,000 (1 ns to 1 s)
-    UINT32  Accuracy;       // In PPM (parts per million)
-    BOOLEAN SetsToZero;     // Set clears sub-second time
+typedef struct
+{
+    UINT32 Resolution;  // 1 to 1,000,000 (1 ns to 1 s)
+    UINT32 Accuracy;    // In PPM (parts per million)
+    BOOLEAN SetsToZero; // Set clears sub-second time
 } EFI_TIME_CAPABILITIES;
 
-typedef EFI_STATUS (EFIAPI *EFI_GET_TIME)(
-    EFI_TIME            *Time,
-    EFI_TIME_CAPABILITIES *Capabilities OPTIONAL
-);
+typedef EFI_STATUS(EFIAPI *EFI_GET_TIME)(
+    EFI_TIME *Time,
+    EFI_TIME_CAPABILITIES *Capabilities OPTIONAL);
 
-typedef EFI_STATUS (EFIAPI *EFI_SET_TIME)(
-    EFI_TIME            *Time
-);
+typedef EFI_STATUS(EFIAPI *EFI_SET_TIME)(
+    EFI_TIME *Time);
 
-typedef EFI_STATUS (EFIAPI *EFI_GET_WAKEUP_TIME)(
-    BOOLEAN            *Enabled,
-    BOOLEAN            *Pending,
-    EFI_TIME           *Time
-);
+typedef EFI_STATUS(EFIAPI *EFI_GET_WAKEUP_TIME)(
+    BOOLEAN *Enabled,
+    BOOLEAN *Pending,
+    EFI_TIME *Time);
 
-typedef EFI_STATUS (EFIAPI *EFI_SET_WAKEUP_TIME)(
-    BOOLEAN            Enable,
-    EFI_TIME           *Time OPTIONAL
-);
-
+typedef EFI_STATUS(EFIAPI *EFI_SET_WAKEUP_TIME)(
+    BOOLEAN Enable,
+    EFI_TIME *Time OPTIONAL);
 
 typedef struct
 {
@@ -881,7 +864,6 @@ typedef struct
 
 } EFI_RUNTIME_SERVICES;
 
-
 typedef struct
 {
     EFI_TABLE_HEADER Hdr;
@@ -901,11 +883,12 @@ typedef struct
 
 typedef struct _EFI_GRAPHICS_OUTPUT_PROTOCOL EFI_GRAPHICS_OUTPUT_PROTOCOL;
 
-typedef struct {
-  UINT8 Blue;
-  UINT8 Green;
-  UINT8 Red;
-  UINT8 Reserved;
+typedef struct
+{
+    UINT8 Blue;
+    UINT8 Green;
+    UINT8 Red;
+    UINT8 Reserved;
 } EFI_GRAPHICS_OUTPUT_BLT_PIXEL;
 
 typedef struct
@@ -1062,4 +1045,149 @@ typedef struct _EFI_DISK_IO_PROTOCOL
     EFI_DISK_WRITE WriteDisk;
 } EFI_DISK_IO_PROTOCOL;
 
+// SIMPLE FS PROTOCOL and EFI_FILE protocl
 
+#define EFI_FILE_PROTOCOL_REVISION 0x00010000
+#define EFI_FILE_PROTOCOL_REVISION2 0x00020000
+#define EFI_FILE_PROTOCOL_LATEST_REVISION EFI_FILE_PROTOCOL_REVISION2
+
+#define EFI_FILE_MODE_READ 0x0000000000000001
+#define EFI_FILE_MODE_WRITE 0x0000000000000002
+#define EFI_FILE_MODE_CREATE 0x8000000000000000
+
+#define EFI_FILE_READ_ONLY 0x0000000000000001
+#define EFI_FILE_HIDDEN 0x0000000000000002
+#define EFI_FILE_SYSTEM 0x0000000000000004
+#define EFI_FILE_RESERVED 0x0000000000000008
+#define EFI_FILE_DIRECTORY 0x0000000000000010
+#define EFI_FILE_ARCHIVE 0x0000000000000020
+#define EFI_FILE_VALID_ATTR 0x0000000000000037
+
+typedef struct _EFI_FILE_PROTOCOL EFI_FILE_PROTOCOL;
+
+typedef EFI_STATUS(EFIAPI *EFI_FILE_OPEN)(
+    IN EFI_FILE_PROTOCOL *This,
+    OUT EFI_FILE_PROTOCOL **NewHandle,
+    IN CHAR16 *FileName,
+    IN UINT64 OpenMode,
+    IN UINT64 Attributes);
+
+typedef EFI_STATUS(EFIAPI *EFI_FILE_CLOSE)(
+    IN EFI_FILE_PROTOCOL *This);
+
+typedef EFI_STATUS(EFIAPI *EFI_FILE_DELETE)(
+    IN EFI_FILE_PROTOCOL *This);
+
+typedef EFI_STATUS(EFIAPI *EFI_FILE_READ)(
+    IN EFI_FILE_PROTOCOL *This,
+    IN OUT UINTN *BufferSize,
+    OUT VOID *Buffer);
+
+typedef EFI_STATUS(EFIAPI *EFI_FILE_WRITE)(
+    IN EFI_FILE_PROTOCOL *This,
+    IN OUT UINTN *BufferSize,
+    IN VOID *Buffer);
+
+typedef EFI_STATUS(EFIAPI *EFI_FILE_GET_POSITION)(
+    IN EFI_FILE_PROTOCOL *This,
+    OUT UINT64 *Position);
+
+typedef EFI_STATUS(EFIAPI *EFI_FILE_SET_POSITION)(
+    IN EFI_FILE_PROTOCOL *This,
+    IN UINT64 Position);
+
+typedef EFI_STATUS(EFIAPI *EFI_FILE_GET_INFO)(
+    IN EFI_FILE_PROTOCOL *This,
+    IN EFI_GUID *InformationType,
+    IN OUT UINTN *BufferSize,
+    OUT VOID *Buffer);
+
+typedef EFI_STATUS(EFIAPI *EFI_FILE_SET_INFO)(
+    IN EFI_FILE_PROTOCOL *This,
+    IN EFI_GUID *InformationType,
+    IN UINTN BufferSize,
+    IN VOID *Buffer);
+
+typedef EFI_STATUS(EFIAPI *EFI_FILE_FLUSH)(
+    IN EFI_FILE_PROTOCOL *This);
+
+struct _EFI_FILE_PROTOCOL
+{
+    UINT64 Revision;
+    EFI_FILE_OPEN Open;
+    EFI_FILE_CLOSE Close;
+    EFI_FILE_DELETE Delete;
+    EFI_FILE_READ Read;
+    EFI_FILE_WRITE Write;
+    EFI_FILE_GET_POSITION GetPosition;
+    EFI_FILE_SET_POSITION SetPosition;
+    EFI_FILE_GET_INFO GetInfo;
+    EFI_FILE_SET_INFO SetInfo;
+    EFI_FILE_FLUSH Flush;
+};
+
+#define EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID                                           \
+    {                                                                                  \
+        0x964e5b22, 0x6459, 0x11d2, { 0x8e, 0x39, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b } \
+    }
+
+typedef struct _EFI_SIMPLE_FILE_SYSTEM_PROTOCOL EFI_SIMPLE_FILE_SYSTEM_PROTOCOL;
+
+typedef EFI_STATUS(EFIAPI *EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_OPEN_VOLUME)(
+    IN EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *This,
+    OUT EFI_FILE_PROTOCOL **Root);
+
+struct _EFI_SIMPLE_FILE_SYSTEM_PROTOCOL
+{
+    UINT64 Revision;
+    EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_OPEN_VOLUME OpenVolume;
+};
+
+// EFI_LOADED_IMAGE protocl
+
+#define EFI_LOADED_IMAGE_PROTOCOL_GUID \
+  { \
+    0x5B1B31A1, 0x9562, 0x11d2, {0x8E, 0x3F, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B } \
+  }
+
+typedef struct
+{
+    UINT32 Revision;
+    EFI_HANDLE ParentHandle;
+    EFI_SYSTEM_TABLE *SystemTable;
+    EFI_HANDLE DeviceHandle;
+    EFI_DEVICE_PATH_PROTOCOL *FilePath;
+    VOID *Reserved;
+    UINT32 LoadOptionsSize;
+    VOID *LoadOptions;
+    VOID *ImageBase;
+    UINT64 ImageSize;
+    EFI_MEMORY_TYPE ImageCodeType;
+    EFI_MEMORY_TYPE ImageDataType;
+    EFI_IMAGE_UNLOAD Unload;
+
+} EFI_LOADED_IMAGE_PROTOCOL;
+
+
+// EFI_FILE_INFO
+
+#define EFI_FILE_INFO_ID {0x09576e92, 0xa22f, 0x4840, {0xa8, 0x06, 0xeb, 0x6b, 0xad, 0x6e, 0x55, 0x65} }
+
+typedef struct {
+  UINT64                  Size;
+  UINT64                  FileSize;
+  UINT64                  PhysicalSize;
+  EFI_TIME                CreateTime;
+  EFI_TIME                LastAccessTime;
+  EFI_TIME                ModificationTime;
+  UINT64                  Attribute;
+  CHAR16                  FileName[1];
+} EFI_FILE_INFO;
+
+typedef
+VOID
+(EFIAPI *EFI_COPY_MEM) (
+    IN VOID     *Destination,
+    IN VOID     *Source,
+    IN UINTN    Length
+);

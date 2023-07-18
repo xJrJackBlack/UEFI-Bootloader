@@ -175,15 +175,14 @@ void printIntroduction(EFI_SYSTEM_TABLE *SystemTable)
      setTextPosition(SystemTable, 4, 2);
      Print(SystemTable, L"Welcome to the SIMPLE Bootloader\n"); // Print Hello message
 
-     setTextPosition(SystemTable, 4, 3);
-     printTime(SystemTable); // Print current time
+     //setTextPosition(SystemTable, 4, 3);
+     //printTime(SystemTable); // Print current time
 
      setTextPosition(SystemTable, 4, 4);
      printUEFIVersion(SystemTable); // Print UEFI version
 
      setTextColour(SystemTable, EFI_YELLOW);
      printOptions(SystemTable, Gop);   // Print Bootloader options
-     clearKeyboardBuffer(SystemTable); // clear keyboard buffer
 }
 
 EFI_FILE_PROTOCOL *GetVolume(EFI_SYSTEM_TABLE *SystemTable, EFI_HANDLE ImageHandle)
@@ -211,6 +210,8 @@ EFI_FILE_PROTOCOL *GetVolume(EFI_SYSTEM_TABLE *SystemTable, EFI_HANDLE ImageHand
 
      Status = FileSystem->OpenVolume(FileSystem, &RootVolume);
 
+     setTextPosition(SystemTable, 4, 2);
+
      if (Status != EFI_SUCCESS)
      {
           clearScreen(SystemTable);
@@ -220,14 +221,14 @@ EFI_FILE_PROTOCOL *GetVolume(EFI_SYSTEM_TABLE *SystemTable, EFI_HANDLE ImageHand
      }
      else
      {
-          Print(SystemTable, L"Opened filesystem.");
+          Print(SystemTable, L"Opened filesystem...");
           Delay(SystemTable, 2);
      }
 
      return RootVolume;
 }
 
-BOOLEAN checkForConfigFile(EFI_SYSTEM_TABLE *SystemTable, EFI_FILE_PROTOCOL *Volume)
+EFI_FILE_PROTOCOL *checkForConfigFile(EFI_SYSTEM_TABLE *SystemTable, EFI_FILE_PROTOCOL *Volume)
 {
      /*
        Check if the simple.cfg configuration file exists, if it does not
@@ -238,20 +239,40 @@ BOOLEAN checkForConfigFile(EFI_SYSTEM_TABLE *SystemTable, EFI_FILE_PROTOCOL *Vol
      EFI_FILE_PROTOCOL *file;
      Status = Volume->Open(Volume, &file, L"simple.cfg", EFI_FILE_READ_ONLY, 0);
 
+     setTextPosition(SystemTable, 4, 3);
+
      if (Status != EFI_SUCCESS)
      {
           clearScreen(SystemTable);
           setTextColour(SystemTable, EFI_RED);
           Print(SystemTable, L"FATAL ERROR: 'simple.cfg' file not found.");
           Delay(SystemTable, 5);
-          return FALSE;
+          return NULL;
      }
      else
      {
-          Print(SystemTable, L"-- Opened config file 'simple.cfg'.\n");
+          Print(SystemTable, L"Opened config file 'simple.cfg'...\n");
           Delay(SystemTable, 2);
      }
 
-     return TRUE;
+     return file;
 }
 
+UINT64 GetFileSize (EFI_FILE_PROTOCOL* FileName)
+{
+    UINT64 Size = 0;
+    FileName->SetPosition(FileName, 0xFFFFFFFFFFFFFFFFULL);
+    FileName->GetPosition(FileName, &Size);
+    FileName->SetPosition(FileName, 0);
+    return Size;
+}
+
+void printAscii(EFI_SYSTEM_TABLE *SystemTable, UINT8 *str) {
+    while (*str != '\0') {
+        CHAR16 out[2];
+        out[0] = (CHAR16)*str;
+        out[1] = '\0';
+        Print(SystemTable, out);
+        str++;
+    }
+}
