@@ -278,7 +278,7 @@ void printAscii(EFI_SYSTEM_TABLE *SystemTable, UINT8 *str)
           str++;
      }
 }
-
+/*
 UINT8 **parseConfigFile(EFI_SYSTEM_TABLE *SystemTable, VOID *FileContents, UINTN fileSize)
 {
      UINT8 *fileContents = (UINT8 *)FileContents;
@@ -315,4 +315,89 @@ UINT8 **parseConfigFile(EFI_SYSTEM_TABLE *SystemTable, VOID *FileContents, UINTN
      names[1] = name2;
 
      return names;
+}
+*/
+
+CHAR16 **parseConfigFile(EFI_SYSTEM_TABLE *SystemTable, VOID *FileContents, UINTN fileSize)
+{
+     UINT8 *fileContents = (UINT8 *)FileContents;
+     UINTN i = 0;
+
+     while (i < fileSize && fileContents[i] != '#')
+          ++i;
+
+     if (i == fileSize || i == 0 || i == fileSize - 1)
+     {
+          clearScreen(SystemTable);
+          setTextColour(SystemTable, EFI_RED);
+          Print(SystemTable, L"FATAL ERROR: Invalid entry in 'simple.cfg'.");
+          Delay(SystemTable, 5);
+          return NULL;
+     }
+
+     CHAR16 **names; // Array that holds the kernel image name and initrd file name
+     SystemTable->BootServices->AllocatePool(EfiLoaderData, sizeof(CHAR16 *) * 2, (VOID **)&names);
+
+     CHAR16 *name1;
+     CHAR16 *name2;
+
+     SystemTable->BootServices->AllocatePool(EfiLoaderData, sizeof(CHAR16) * (i + 1), (VOID **)&name1);        // Allocate memory for kernel image name
+     SystemTable->BootServices->AllocatePool(EfiLoaderData, sizeof(CHAR16) * (fileSize - i), (VOID **)&name2); // Allocate memory for initrd file name
+
+     for (UINTN j = 0; j < i; ++j)
+     {
+          name1[j] = (CHAR16)fileContents[j];
+     }
+
+     name1[i] = L'\0';
+
+     for (UINTN j = 0; j < fileSize - i - 1; ++j)
+     {
+          name2[j] = (CHAR16)fileContents[i + 1 + j];
+     }
+     
+     name2[fileSize - i - 1] = L'\0';
+
+     names[0] = name1;
+     names[1] = name2;
+
+     return names;
+}
+
+BOOLEAN checkKernelMagicNumber(EFI_SYSTEM_TABLE *SystemTable, EFI_FILE_PROTOCOL *Volume, CHAR16 *KernelImageName)
+{
+     EFI_STATUS Status;
+     EFI_FILE_PROTOCOL *file;
+     Status = Volume->Open(Volume, &file, KernelImageName, EFI_FILE_READ_ONLY, 0);
+
+     if (Status != EFI_SUCCESS && EFI_ERROR(Status))
+     {
+          clearScreen(SystemTable);
+          setTextColour(SystemTable, EFI_RED);
+          Print(SystemTable, L"FATAL ERROR: Failed to open kernel image.");
+          Delay(SystemTable, 5);
+          return FALSE;
+     }
+     
+     UINT32 MagicNumber;
+     UINT64 Offset = 0x202; // Kernel image magic number offset
+     UINTN MagicNumberSize = sizeof(MagicNumber);
+     file->SetPosition(file, Offset);
+     file->Read(file, &MagicNumberSize, &MagicNumber);
+     file->SetPosition(file, 0); // Reset position
+
+     MagicNumber = ((MagicNumber >> 24) & 0xff) | ((MagicNumber << 8) & 0xff0000) | ((MagicNumber >> 8) & 0xff00) | ((MagicNumber << 24) & 0xff000000); // Convert to little endian form
+     
+     setTextPosition(SystemTable, 4, 4);
+
+     if (MagicNumber != 0x48647253) { // Magic number '0x53726448' in little endian format 
+         clearScreen(SystemTable);
+         setTextColour(SystemTable, EFI_RED);
+         Print(SystemTable, L"FATAL ERROR: Kernel image boot protocol version is old.");
+         Delay(SystemTable, 5);
+         return FALSE;
+     } else {
+          Print(SystemTable, L"Kernel magic number 0x53726448 found...\n");
+          return TRUE;
+     }
 }

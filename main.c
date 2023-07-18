@@ -38,15 +38,10 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
         Status = file->Read(file, &fileSize, FileContents);                                                // Store file content in buffer
     }
 
-    UINT8 **names = parseConfigFile(SystemTable, FileContents, fileSize);
-    printAscii(SystemTable, names[0]);
-    printAscii(SystemTable, names[1]);
+    CHAR16 **names = parseConfigFile(SystemTable, FileContents, fileSize);
+    checkKernelMagicNumber(SystemTable, Volume, names[0]);
+
     Delay(SystemTable, 50);
 
     return 0;   
 }
-
-/*
-he#lo
-01234
-*/
