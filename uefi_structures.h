@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#define EFI_SIZE_TO_PAGES(Size) (((Size) >> 12) + (((Size) & 0xfff) ? 1 : 0))
+
 typedef int8_t i8;
 typedef int16_t i16;
 typedef int32_t i32; // Ensure 32 bit integer

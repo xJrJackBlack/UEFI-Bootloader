@@ -1,6 +1,7 @@
 #pragma once
 
 #include "uefi_structures.h"
+#include "linux.h"
 
 void setTextPosition(EFI_SYSTEM_TABLE *SystemTable, UINT32 Col, UINT32 Row)
 {
@@ -132,28 +133,6 @@ void printNum(EFI_SYSTEM_TABLE *SystemTable, UINTN num)
      Print(SystemTable, Buffer);
 }
 
-void printTime(EFI_SYSTEM_TABLE *SystemTable)
-{
-     EFI_TIME currentTime;
-     SystemTable->RuntimeServices->GetTime(&currentTime, NULL);
-
-     Print(SystemTable, L"Current Time: ");
-     printNum(SystemTable, currentTime.Day);
-     Print(SystemTable, L"/");
-     printNum(SystemTable, currentTime.Month);
-     Print(SystemTable, L"/");
-     printNum(SystemTable, currentTime.Year);
-
-     Print(SystemTable, L"  ");
-
-     printNum(SystemTable, currentTime.Hour);
-     Print(SystemTable, L":");
-     printNum(SystemTable, currentTime.Minute);
-     Print(SystemTable, L":");
-     printNum(SystemTable, currentTime.Second);
-     Print(SystemTable, L"\n");
-}
-
 void printUEFIVersion(EFI_SYSTEM_TABLE *SystemTable)
 {
      Print(SystemTable, L"UEFI Version: ");
@@ -222,7 +201,7 @@ EFI_FILE_PROTOCOL *GetVolume(EFI_SYSTEM_TABLE *SystemTable, EFI_HANDLE ImageHand
      else
      {
           Print(SystemTable, L"Opened filesystem...");
-          Delay(SystemTable, 2);
+          Delay(SystemTable, 1);
      }
 
      return RootVolume;
@@ -252,7 +231,7 @@ EFI_FILE_PROTOCOL *checkForConfigFile(EFI_SYSTEM_TABLE *SystemTable, EFI_FILE_PR
      else
      {
           Print(SystemTable, L"Opened config file 'simple.cfg'...\n");
-          Delay(SystemTable, 2);
+          Delay(SystemTable, 1);
      }
 
      return file;
@@ -278,45 +257,12 @@ void printAscii(EFI_SYSTEM_TABLE *SystemTable, UINT8 *str)
           str++;
      }
 }
-/*
-UINT8 **parseConfigFile(EFI_SYSTEM_TABLE *SystemTable, VOID *FileContents, UINTN fileSize)
-{
-     UINT8 *fileContents = (UINT8 *)FileContents;
-     UINTN i = 0;
 
-     while (i < fileSize && fileContents[i] != '#')
-          ++i;
+UINT32 toLittleEndian(UINT32 num) {
 
-     if (i == fileSize || i == 0 || i == fileSize-1)
-     {
-          clearScreen(SystemTable);
-          setTextColour(SystemTable, EFI_RED);
-          Print(SystemTable, L"FATAL ERROR: Invalid entry in 'simple.cfg'.");
-          Delay(SystemTable, 5);
-          return NULL;
-     }
-
-     UINT8 **names; // Array that holds the kernel image name and initrd file name
-     SystemTable->BootServices->AllocatePool(EfiLoaderData, sizeof(UINT8 *) * 2, (VOID **)&names);
-
-     UINT8 *name1;
-     UINT8 *name2;
-
-     SystemTable->BootServices->AllocatePool(EfiLoaderData, sizeof(UINT8) * i + 1, (VOID **)&name1); // Allocate memory for kernel image name
-     SystemTable->BootServices->CopyMem(name1, FileContents, sizeof(UINT8) * i);                     // Copy kernel image file name into name1 buffer
-
-     SystemTable->BootServices->AllocatePool(EfiLoaderData, sizeof(UINT8) * fileSize - i, (VOID **)&name2); // Allocate memory for initrd file name
-     SystemTable->BootServices->CopyMem(name2, FileContents + i + 1, sizeof(UINT8) * fileSize - i - 1);     // Copy initrd file name into name2 buffer
-
-     name1[i] = '\0';
-     name2[fileSize - i - 1] = '\0';
-
-     names[0] = name1;
-     names[1] = name2;
-
-     return names;
+     num = ((num >> 24) & 0xff) | ((num << 8) & 0xff0000) | ((num >> 8) & 0xff00) | ((num << 24) & 0xff000000);
+     return num;
 }
-*/
 
 CHAR16 **parseConfigFile(EFI_SYSTEM_TABLE *SystemTable, VOID *FileContents, UINTN fileSize)
 {
@@ -364,40 +310,153 @@ CHAR16 **parseConfigFile(EFI_SYSTEM_TABLE *SystemTable, VOID *FileContents, UINT
      return names;
 }
 
-BOOLEAN checkKernelMagicNumber(EFI_SYSTEM_TABLE *SystemTable, EFI_FILE_PROTOCOL *Volume, CHAR16 *KernelImageName)
-{
+
+VOID *getKernelImagePages(EFI_SYSTEM_TABLE *SystemTable, EFI_FILE_PROTOCOL *Volume, CHAR16 *KernelImageName) {
+
      EFI_STATUS Status;
-     EFI_FILE_PROTOCOL *file;
-     Status = Volume->Open(Volume, &file, KernelImageName, EFI_FILE_READ_ONLY, 0);
+     EFI_FILE_PROTOCOL *file;     
+     Status = Volume->Open(Volume, &file, KernelImageName, EFI_FILE_READ_ONLY, 0); // Open volume to get file handle of kernel image
 
      if (Status != EFI_SUCCESS && EFI_ERROR(Status))
      {
           clearScreen(SystemTable);
           setTextColour(SystemTable, EFI_RED);
-          Print(SystemTable, L"FATAL ERROR: Failed to open kernel image.");
+          Print(SystemTable, L"FATAL ERROR: Failed to open kernel image.\n");
+          Delay(SystemTable, 5);
+          return NULL;
+     }
+
+     VOID *buffer;
+     UINTN fileSize = GetFileSize(file); // Get size of file
+     UINTN pagesToAllocate = EFI_SIZE_TO_PAGES(fileSize); // Convert file size to page equivalent
+
+     Status = SystemTable->BootServices->AllocatePages(AllocateAnyPages, EfiLoaderData, pagesToAllocate, (EFI_PHYSICAL_ADDRESS*)(VOID*)&buffer); // Allocate pages 
+
+     if (Status != EFI_SUCCESS && EFI_ERROR(Status))
+     {
+          clearScreen(SystemTable);
+          setTextColour(SystemTable, EFI_RED);
+          Print(SystemTable, L"FATAL ERROR: Failed to allocate pages for kernel image.\n");
+          Delay(SystemTable, 5);
+          return FALSE;
+     }
+
+     Status = file->Read(file, &fileSize, buffer); // Load file content into pages
+
+     if (Status != EFI_SUCCESS && EFI_ERROR(Status))
+     {
+          clearScreen(SystemTable);
+          setTextColour(SystemTable, EFI_RED);
+          Print(SystemTable, L"FATAL ERROR: Failed to read kernel image into Pages.\n");
           Delay(SystemTable, 5);
           return FALSE;
      }
      
+     Status = file->Close(file); // Close file handle
+
+
+     if (Status != EFI_SUCCESS && EFI_ERROR(Status))
+     {
+          clearScreen(SystemTable);
+          setTextColour(SystemTable, EFI_RED);
+          Print(SystemTable, L"FATAL ERROR: Failed to close kernel file handle.\n");
+          Delay(SystemTable, 5);
+          return FALSE;
+     }
+
+     return buffer;
+}
+
+
+BOOLEAN checkKernelMagicNumber(EFI_SYSTEM_TABLE *SystemTable, VOID *Buffer)
+{
      UINT32 MagicNumber;
      UINT64 Offset = 0x202; // Kernel image magic number offset
-     UINTN MagicNumberSize = sizeof(MagicNumber);
-     file->SetPosition(file, Offset);
-     file->Read(file, &MagicNumberSize, &MagicNumber);
-     file->SetPosition(file, 0); // Reset position
+     UINT8* byteBuffer = (UINT8*) Buffer;
 
-     MagicNumber = ((MagicNumber >> 24) & 0xff) | ((MagicNumber << 8) & 0xff0000) | ((MagicNumber >> 8) & 0xff00) | ((MagicNumber << 24) & 0xff000000); // Convert to little endian form
+     // Use CopyMem to ensure we don't run into alignment issues.
+     SystemTable->BootServices->CopyMem(&MagicNumber, byteBuffer + Offset, sizeof(MagicNumber));
+
+     MagicNumber = toLittleEndian(MagicNumber); // Convert to little endian form
      
      setTextPosition(SystemTable, 4, 4);
 
-     if (MagicNumber != 0x48647253) { // Magic number '0x53726448' in little endian format 
+     if (MagicNumber != toLittleEndian(0x53726448)) { // Magic number '0x53726448' in little endian format 
          clearScreen(SystemTable);
          setTextColour(SystemTable, EFI_RED);
          Print(SystemTable, L"FATAL ERROR: Kernel image boot protocol version is old.");
          Delay(SystemTable, 5);
          return FALSE;
-     } else {
-          Print(SystemTable, L"Kernel magic number 0x53726448 found...\n");
-          return TRUE;
+     } else if (MagicNumber == toLittleEndian(0x53726448)) {
+         Print(SystemTable, L"Kernel magic number 0x53726448 found...\n");
+         Delay(SystemTable, 1);
+         return TRUE;
      }
+
+     return FALSE;
+}
+
+UINTN getSetupCodeSize(EFI_SYSTEM_TABLE *SystemTable, VOID *Buffer) {
+
+     UINT8 setupSects;
+     UINT64 Offset = 0x1f1;
+     UINT8* byteBuffer = (UINT8*) Buffer; // We need to read a byte at offset 0x1f1 so we use UINT8 *
+     
+     // Use CopyMem to ensure we don't run into alignment issues.
+     SystemTable->BootServices->CopyMem(&setupSects, byteBuffer + Offset, sizeof(setupSects));
+
+     setTextPosition(SystemTable, 4, 5);
+
+     if (setupSects == 0) 
+         setupSects = 4;
+
+     Print(SystemTable, L"Found kernel setup code size at offset 0x1f1 '");
+     printNum(SystemTable, setupSects*512);
+     Print(SystemTable, L"'...\n");
+     Delay(SystemTable, 1);
+
+     setupSects *= 512;
+
+     return setupSects;
+}
+
+
+UINTN getSetupHeaderEnd(EFI_SYSTEM_TABLE *SystemTable, VOID *Buffer) {
+
+     EFI_STATUS Status;
+     UINT8 endValue;
+     UINT64 Offset = 0x0201;
+
+     UINT8* byteBuffer = (UINT8*) Buffer;
+
+     SystemTable->BootServices->CopyMem(&endValue, byteBuffer + Offset, sizeof(endValue)); // Read byte at offset from kernel image pages
+
+     setTextPosition(SystemTable, 4, 6);
+     Print(SystemTable, L"Found setup header end value at offset 0x0201 '");
+     printNum(SystemTable, endValue+0x0202);
+     Print(SystemTable, L"'...\n");
+     Delay(SystemTable, 1);
+
+     return 0x0202 + endValue;
+}
+
+VOID extractLoadSetupHeader(EFI_SYSTEM_TABLE *SystemTable, VOID *Buffer, struct boot_params *boot_params, UINTN setupHeaderEnd) {
+    
+    UINT64 Offset = 0x01f1; // Start of setup header
+    UINT8* byteBuffer = (UINT8*) Buffer;
+    SystemTable->BootServices->CopyMem(&boot_params->hdr, byteBuffer + Offset, setupHeaderEnd - Offset); // Copy the setup_header starting at offset 0x1f1 of size setupHeaderEnd - offset
+                                                                                                         // Into the hdr field of the boot_params struct
+    setTextPosition(SystemTable, 4, 7);
+    Print(SystemTable, L"Loading setup_header into boot_params->hdr...\n");
+    Delay(SystemTable, 1);
+}
+
+VOID printBootProtocol(EFI_SYSTEM_TABLE *SystemTable, struct setup_header *setup_header) {
+
+     setTextPosition(SystemTable, 4, 8);
+     Print(SystemTable, L"Boot protocol version: ");
+     printNum(SystemTable, setup_header->version >> 8);
+     Print(SystemTable, L".");
+     printNum(SystemTable, setup_header->version & 0xff);
+     Print(SystemTable, L"\n");
 }

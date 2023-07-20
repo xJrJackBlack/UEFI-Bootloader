@@ -1,5 +1,6 @@
 #include "uefi_structures.h"
 #include "uefi_lib.h"
+#include "linux.h"
 
 EFI_STATUS
 EFIAPI
@@ -20,6 +21,7 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
         }
         else if (Key.UnicodeChar == L'b' || Key.UnicodeChar == L'B')
         {
+            
         }
         else if (Key.UnicodeChar == L's' || Key.UnicodeChar == L'S')
         {
@@ -36,12 +38,29 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     {
         Status = SystemTable->BootServices->AllocatePool(EfiLoaderData, fileSize, (VOID **)&FileContents); // Allocate memory for file content buffer
         Status = file->Read(file, &fileSize, FileContents);                                                // Store file content in buffer
+        file->Close(file);
     }
 
-    CHAR16 **names = parseConfigFile(SystemTable, FileContents, fileSize);
-    checkKernelMagicNumber(SystemTable, Volume, names[0]);
+    CHAR16 **names = parseConfigFile(SystemTable, FileContents, fileSize); // parse simple.cfg
 
-    Delay(SystemTable, 50);
+    VOID *kernelBuffer = getKernelImagePages(SystemTable, Volume, names[0]);
+
+    checkKernelMagicNumber(SystemTable, kernelBuffer); // validate kernel image magic number/signature
+
+    UINTN setupCodeSize = getSetupCodeSize(SystemTable,kernelBuffer); // get size of setup code from kernel image
+    UINTN realModeCodeSize = 512 + setupCodeSize; 
+
+    struct boot_params *boot_params;
+    SystemTable->BootServices->AllocatePool(EfiLoaderData, sizeof(struct boot_params), (VOID **)&boot_params); // Allocate memory for boot_params
+    SystemTable->BootServices->SetMem(boot_params, sizeof(struct boot_params), 0); // Initialise to all zero
+
+    struct setup_header *setup_header = &boot_params->hdr;
+
+    UINTN setupHeaderEnd = getSetupHeaderEnd(SystemTable, kernelBuffer);
+    extractLoadSetupHeader(SystemTable, kernelBuffer, boot_params, setupHeaderEnd);
+
+    printBootProtocol(SystemTable, setup_header);
+    Delay(SystemTable, 10);
 
     return 0;   
 }
