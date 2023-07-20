@@ -21,7 +21,7 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
         }
         else if (Key.UnicodeChar == L'b' || Key.UnicodeChar == L'B')
         {
-            
+
         }
         else if (Key.UnicodeChar == L's' || Key.UnicodeChar == L'S')
         {
@@ -59,7 +59,17 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     UINTN setupHeaderEnd = getSetupHeaderEnd(SystemTable, kernelBuffer);
     extractLoadSetupHeader(SystemTable, kernelBuffer, boot_params, setupHeaderEnd);
 
-    printBootProtocol(SystemTable, setup_header);
+    printBootProtocolVersion(SystemTable, setup_header);
+    validateBootSector(SystemTable, setup_header);
+
+    CHAR8 *cmdline;  // Will specify the kernel command line parameter in cmdline, can be used to customise kernel booting options 
+    SystemTable->BootServices->AllocatePool(EfiLoaderData, sizeof("root=/dev/nvme0n1p2"), (VOID**) &cmdline);
+    SystemTable->BootServices->CopyMem(cmdline, "root=/dev/nvme0n1p2", sizeof("root=/dev/nvme0n1p2"));
+    setup_header->cmd_line_ptr = (UINT32)(uintptr_t)cmdline;    // Setting command line paramters in boot_params setup_header (hdr field)
+
+    setup_header->vid_mode = 0xffff;     // set vid_mode of kernel to 'normal mode'
+    setup_header->type_of_loader = 0xff; // Used to indicate the bootloaded that loaded the kernel, set to unique value so kernel can identify bootloader
+
     Delay(SystemTable, 10);
 
     return 0;   

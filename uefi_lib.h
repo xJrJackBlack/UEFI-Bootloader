@@ -420,7 +420,6 @@ UINTN getSetupCodeSize(EFI_SYSTEM_TABLE *SystemTable, VOID *Buffer) {
      return setupSects;
 }
 
-
 UINTN getSetupHeaderEnd(EFI_SYSTEM_TABLE *SystemTable, VOID *Buffer) {
 
      EFI_STATUS Status;
@@ -451,7 +450,7 @@ VOID extractLoadSetupHeader(EFI_SYSTEM_TABLE *SystemTable, VOID *Buffer, struct 
     Delay(SystemTable, 1);
 }
 
-VOID printBootProtocol(EFI_SYSTEM_TABLE *SystemTable, struct setup_header *setup_header) {
+VOID printBootProtocolVersion(EFI_SYSTEM_TABLE *SystemTable, struct setup_header *setup_header) {
 
      setTextPosition(SystemTable, 4, 8);
      Print(SystemTable, L"Boot protocol version: ");
@@ -459,4 +458,45 @@ VOID printBootProtocol(EFI_SYSTEM_TABLE *SystemTable, struct setup_header *setup
      Print(SystemTable, L".");
      printNum(SystemTable, setup_header->version & 0xff);
      Print(SystemTable, L"\n");
+}
+
+VOID validateBootSector(EFI_SYSTEM_TABLE *SystemTable, struct setup_header *setup_header) {
+
+     setTextPosition(SystemTable, 4, 9);
+
+     if (setup_header->boot_flag == 0xAA55) {
+         Print(SystemTable, L"Setup header boot sector value validated, value '0xAA55' found...\n ");
+         Delay(SystemTable, 1);
+     }
+     else {
+          clearScreen(SystemTable);
+          setTextColour(SystemTable, EFI_RED);
+          Print(SystemTable, L"FATAL ERROR: Kernel setup header contains invalid boot sector.\n");
+          Delay(SystemTable, 5);
+     }
+}
+
+VOID printKernelVersion(EFI_SYSTEM_TABLE *SystemTable, struct setup_header *setup_header, VOID *Buffer) {
+    
+    if (setup_header->kernel_version != 0) {
+
+        UINT8 *byteBuffer = (UINT8*) Buffer;
+        CHAR16 kernel_version[128];
+        UINT32 kernel_version_offset = setup_header->kernel_version + 0x200;
+        CHAR8* kernel_version_string = (CHAR8*)byteBuffer + kernel_version_offset;
+        UINTN i;
+
+        for(i = 0; i < 127 && kernel_version_string[i]; ++i) {
+            if (kernel_version_string[i] == ' ') break;
+            kernel_version[i] = (CHAR16)kernel_version_string[i];
+        }
+
+        kernel_version[i] = L'\0';
+
+        setTextPosition(SystemTable, 4, 10);
+        Print(SystemTable, L"Kernel Version: ");
+        Print(SystemTable, kernel_version);
+        Print(SystemTable, L"\n");
+        Delay(SystemTable, 1);
+    }
 }
