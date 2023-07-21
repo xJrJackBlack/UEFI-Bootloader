@@ -55,6 +55,11 @@ The bootloader uses a configuration file which is reads to determine which kerne
 - ```InitRDFileName``` should be the name of the initrd file name
 
 
+# Steps for booting the kernel
+
+1) **Load the real-mode code**: The real-mode code is a part of the kernel image which contains code that runs in real mode. In the Linux kernel the real-mode code is made up of the boot-sector portion and the setup-code portion. The size of the boot-sector portion is always 512 bytes. The size of the setup-code portion can be obtained by reading at offset 0x1f1 into the kernel image, which gives the size of the setup-code in 512 byte sectors. If the value read is 0, then  change it to 4. Then finally multiply this by 512. Using this information we can calculate the size of the real-mode code by adding both the boot-sector portion size and the setup-code portion size.
+
+
 
 
 
