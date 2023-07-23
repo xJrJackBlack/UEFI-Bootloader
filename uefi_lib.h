@@ -470,6 +470,7 @@ VOID printBootProtocolVersion(EFI_SYSTEM_TABLE *SystemTable, struct setup_header
      Print(SystemTable, L".");
      printNum(SystemTable, setup_header->version & 0xff);
      Print(SystemTable, L"\n");
+     Delay(SystemTable, 1);
 }
 
 VOID validateBootSector(EFI_SYSTEM_TABLE *SystemTable, struct setup_header *setup_header)
@@ -663,6 +664,70 @@ VOID *loadInitrd(EFI_SYSTEM_TABLE *SystemTable, EFI_FILE_PROTOCOL *Volume, CHAR1
      return (VOID *)buffer;
 }
 
+VOID videoSetup(EFI_SYSTEM_TABLE *SystemTable, struct screen_info *screen_info) {
+
+     EFI_STATUS Status;
+     EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop;
+     Status = SystemTable->BootServices->LocateProtocol(&EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID, NULL, (VOID **)&Gop);
+     
+     if (EFI_ERROR(Status)) {
+         clearScreen(SystemTable);
+         setTextColour(SystemTable, EFI_RED);
+         Print(SystemTable, L"FATAL ERROR: Failed setup kernel video boot params.\n");
+         Delay(SystemTable, 5);
+         return;
+     }
+
+     setTextPosition(SystemTable, 4, 11);
+     Print(SystemTable, L"Setting up graphics/video...\n");
+     Delay(SystemTable, 1);
+
+     switch (Gop->Mode->Info->PixelFormat) {
+          
+          case PixelRedGreenBlueReserved8BitPerColor:
+               screen_info->lfb_depth  = 32;
+               screen_info->red_size   = 8;
+               screen_info->green_size = 8;
+               screen_info->blue_size  = 8;
+               screen_info->rsvd_size  = 8;
+
+               screen_info->red_pos    = 0;
+               screen_info->green_pos  = 8;
+               screen_info->blue_pos   = 16;
+               screen_info->rsvd_pos   = 24;
+               break;
+
+          case PixelBlueGreenRedReserved8BitPerColor:
+               screen_info->lfb_depth  = 32;
+               screen_info->blue_size  = 8;
+               screen_info->green_size = 8;
+               screen_info->red_size   = 8;
+               screen_info->rsvd_size  = 8;
+
+               screen_info->blue_pos   = 0;
+               screen_info->green_pos  = 8;
+               screen_info->red_pos    = 16;
+               screen_info->rsvd_pos   = 24;
+               break;
+          
+          default:
+               clearScreen(SystemTable);
+               setTextColour(SystemTable, EFI_RED);
+               Print(SystemTable, L"FATAL ERROR: Unsupported pixel formal.\n");
+               Delay(SystemTable, 5);
+               return;
+     }
+
+     screen_info->orig_video_isVGA = VIDEO_TYPE_EFI;
+     screen_info->lfb_base         = (UINT32) Gop->Mode->FrameBufferBase;           // Store lower 32 bits in linear frame buffer base 
+     screen_info->ext_lfb_base     = (UINT32) (Gop->Mode->FrameBufferBase >> 32);   // Store upper 32 bits in extended linear frame buffer base
+     screen_info->lfb_size         = Gop->Mode->FrameBufferSize;
+     screen_info->lfb_height       = (UINT16) Gop->Mode->Info->VerticalResolution;  // These lines set the linear frame buffer height and width
+     screen_info->lfb_width        = (UINT16) Gop->Mode->Info->HorizontalResolution;
+     screen_info->lfb_linelength   = Gop->Mode->Info->PixelsPerScanLine * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL);
+     screen_info->capabilities     = VIDEO_CAPABILITY_64BIT_BASE;
+}
+
 VOID jumpToEntry(EFI_SYSTEM_TABLE *SystemTable, EFI_HANDLE *ImageHandle)
 {
      EFI_STATUS Status;
@@ -678,17 +743,12 @@ VOID jumpToEntry(EFI_SYSTEM_TABLE *SystemTable, EFI_HANDLE *ImageHandle)
 
      obtainMemoryMap(SystemTable, &MemoryMapSize, &MemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
 
-     setTextPosition(SystemTable, 4, 10);
-     Print(SystemTable, L"MemoryMap obtained...\n");
-     Delay(SystemTable, 1);
-
-     setTextPosition(SystemTable, 4, 11);
+     setTextPosition(SystemTable, 4, 12);
      Print(SystemTable, L"Jumping to kernel entry point...\n");
      Delay(SystemTable, 1);
 
      typedef void (*KernelEntryPoint)(void);
      KernelEntryPoint jmp = (KernelEntryPoint)JumpAddr;
-     
      SystemTable->BootServices->ExitBootServices(ImageHandle, MapKey);
 
      jmp();

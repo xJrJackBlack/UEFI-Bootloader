@@ -72,6 +72,10 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     setup_header->type_of_loader = 0xff; // Used to indicate the bootloaded that loaded the kernel, set to unique value so kernel can identify bootloader
 
     VOID *initrdBuffer = loadInitrd(SystemTable, Volume, names[1], setup_header);
+
+    struct screen_info *screen_info = &boot_params->screen_info;
+    videoSetup(SystemTable, screen_info);
+    
     jumpToEntry(SystemTable, ImageHandle);
 
     Delay(SystemTable, 5);
