@@ -76,7 +76,10 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     struct screen_info *screen_info = &boot_params->screen_info;
     videoSetup(SystemTable, screen_info);
     
-    jumpToEntry(SystemTable, ImageHandle);
+    jumpToEntry(SystemTable, ImageHandle, realModeCodeSize);
+
+    __asm__("movl %edx, %eax\n\t"
+        "addl $2, %eax\n\t");
 
     Delay(SystemTable, 5);
 

@@ -728,12 +728,12 @@ VOID videoSetup(EFI_SYSTEM_TABLE *SystemTable, struct screen_info *screen_info) 
      screen_info->capabilities     = VIDEO_CAPABILITY_64BIT_BASE;
 }
 
-VOID jumpToEntry(EFI_SYSTEM_TABLE *SystemTable, EFI_HANDLE *ImageHandle)
+VOID jumpToEntry(EFI_SYSTEM_TABLE *SystemTable, EFI_HANDLE *ImageHandle, UINTN realModeCodeSize)
 {
      EFI_STATUS Status;
 
-     EFI_PHYSICAL_ADDRESS KernelBase = 0x100000;         // Kernel start address, it is loaded here
-     EFI_PHYSICAL_ADDRESS JumpAddr = KernelBase + 0x200; // Address to jump to, in order to start kernel
+     EFI_PHYSICAL_ADDRESS KernelBase = (EFI_PHYSICAL_ADDRESS)(0x100000 + realModeCodeSize); // Kernel start address, it is loaded here
+     EFI_PHYSICAL_ADDRESS JumpAddr = (EFI_PHYSICAL_ADDRESS)(KernelBase + 0x200); // Address to jump to, in order to start kernel
 
      UINTN MemoryMapSize = 0;
      EFI_MEMORY_DESCRIPTOR *MemoryMap = NULL;
