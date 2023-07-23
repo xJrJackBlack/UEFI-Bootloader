@@ -27,6 +27,7 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
         {
             SHUTDOWN(SystemTable);
         }
+
     } while (Status == EFI_NOT_READY || !(Key.UnicodeChar == L'r' || Key.UnicodeChar == L'R' || Key.UnicodeChar == L'b' || Key.UnicodeChar == L'B'));
 
     EFI_FILE_PROTOCOL *Volume = GetVolume(SystemTable, ImageHandle);   // Open EFI FAT32 filesystem
@@ -43,7 +44,7 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 
     CHAR16 **names = parseConfigFile(SystemTable, FileContents, fileSize); // parse simple.cfg
 
-    VOID *kernelBuffer = getKernelImagePages(SystemTable, Volume, names[0]);
+    VOID *kernelBuffer = loadKernel(SystemTable, Volume, names[0]);
 
     checkKernelMagicNumber(SystemTable, kernelBuffer); // validate kernel image magic number/signature
 
@@ -63,14 +64,17 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     validateBootSector(SystemTable, setup_header);
 
     CHAR8 *cmdline;  // Will specify the kernel command line parameter in cmdline, can be used to customise kernel booting options 
-    SystemTable->BootServices->AllocatePool(EfiLoaderData, sizeof("root=/dev/nvme0n1p2"), (VOID**) &cmdline);
-    SystemTable->BootServices->CopyMem(cmdline, "root=/dev/nvme0n1p2", sizeof("root=/dev/nvme0n1p2"));
-    setup_header->cmd_line_ptr = (UINT32)(uintptr_t)cmdline;    // Setting command line paramters in boot_params setup_header (hdr field)
+    SystemTable->BootServices->AllocatePool(EfiLoaderData, sizeof("root=/dev/sdb"), (VOID**) &cmdline);
+    SystemTable->BootServices->CopyMem(cmdline, "root=/dev/sdb", sizeof("root=/dev/sdb"));
 
+    setup_header->cmd_line_ptr = (UINT32)(uintptr_t)cmdline;    // Setting command line paramters in boot_params setup_header (hdr field)
     setup_header->vid_mode = 0xffff;     // set vid_mode of kernel to 'normal mode'
     setup_header->type_of_loader = 0xff; // Used to indicate the bootloaded that loaded the kernel, set to unique value so kernel can identify bootloader
 
-    Delay(SystemTable, 10);
+    VOID *initrdBuffer = loadInitrd(SystemTable, Volume, names[1], setup_header);
+    jumpToEntry(SystemTable, ImageHandle);
 
-    return 0;   
+    Delay(SystemTable, 5);
+
+    return 0;
 }

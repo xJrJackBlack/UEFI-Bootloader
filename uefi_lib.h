@@ -20,7 +20,6 @@ void clearScreen(EFI_SYSTEM_TABLE *SystemTable)
 
 void clearKeyboardBuffer(EFI_SYSTEM_TABLE *SystemTable)
 {
-
      SystemTable->ConIn->Reset(SystemTable->ConIn, 1);
 }
 
@@ -144,7 +143,6 @@ void printUEFIVersion(EFI_SYSTEM_TABLE *SystemTable)
 
 void printIntroduction(EFI_SYSTEM_TABLE *SystemTable)
 {
-
      EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop;
      SystemTable->BootServices->LocateProtocol(&EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID, NULL, (VOID **)&Gop);
 
@@ -258,8 +256,8 @@ void printAscii(EFI_SYSTEM_TABLE *SystemTable, UINT8 *str)
      }
 }
 
-UINT32 toLittleEndian(UINT32 num) {
-
+UINT32 toLittleEndian(UINT32 num)
+{
      num = ((num >> 24) & 0xff) | ((num << 8) & 0xff0000) | ((num >> 8) & 0xff00) | ((num << 24) & 0xff000000);
      return num;
 }
@@ -282,39 +280,52 @@ CHAR16 **parseConfigFile(EFI_SYSTEM_TABLE *SystemTable, VOID *FileContents, UINT
      }
 
      CHAR16 **names; // Array that holds the kernel image name and initrd file name
-     SystemTable->BootServices->AllocatePool(EfiLoaderData, sizeof(CHAR16 *) * 2, (VOID **)&names);
+     EFI_STATUS status = SystemTable->BootServices->AllocatePool(EfiLoaderData, sizeof(CHAR16 *) * 2, (VOID **)&names);
 
-     CHAR16 *name1;
-     CHAR16 *name2;
+     if (EFI_ERROR(status))
+     {
+          Print(SystemTable, L"FATAL ERROR: Failed to allocate memory for file names.\n");
+          return NULL;
+     }
 
-     SystemTable->BootServices->AllocatePool(EfiLoaderData, sizeof(CHAR16) * (i + 1), (VOID **)&name1);        // Allocate memory for kernel image name
-     SystemTable->BootServices->AllocatePool(EfiLoaderData, sizeof(CHAR16) * (fileSize - i), (VOID **)&name2); // Allocate memory for initrd file name
+     status = SystemTable->BootServices->AllocatePool(EfiLoaderData, sizeof(CHAR16) * (i + 1), (VOID **)&names[0]);
+     if (EFI_ERROR(status))
+     {
+          Print(SystemTable, L"FATAL ERROR: Failed to allocate memory for first file name.\n");
+          return NULL;
+     }
+
+     status = SystemTable->BootServices->AllocatePool(EfiLoaderData, sizeof(CHAR16) * (fileSize - i), (VOID **)&names[1]);
+     if (EFI_ERROR(status))
+     {
+          Print(SystemTable, L"FATAL ERROR: Failed to allocate memory for second file name.\n");
+          return NULL;
+     }
 
      for (UINTN j = 0; j < i; ++j)
      {
-          name1[j] = (CHAR16)fileContents[j];
+          names[0][j] = (CHAR16)fileContents[j];
      }
+     names[0][i] = L'\0';
 
-     name1[i] = L'\0';
-
-     for (UINTN j = 0; j < fileSize - i - 1; ++j)
+     UINTN j = 0;
+     for (; j < fileSize - i - 1; ++j)
      {
-          name2[j] = (CHAR16)fileContents[i + 1 + j];
+          if (fileContents[i + 1 + j] == '\n' || fileContents[i + 1 + j] == '\r')
+          {
+               break;
+          }
+          names[1][j] = (CHAR16)fileContents[i + 1 + j];
      }
-     
-     name2[fileSize - i - 1] = L'\0';
-
-     names[0] = name1;
-     names[1] = name2;
+     names[1][j] = L'\0';
 
      return names;
 }
 
-
-VOID *getKernelImagePages(EFI_SYSTEM_TABLE *SystemTable, EFI_FILE_PROTOCOL *Volume, CHAR16 *KernelImageName) {
-
+VOID *loadKernel(EFI_SYSTEM_TABLE *SystemTable, EFI_FILE_PROTOCOL *Volume, CHAR16 *KernelImageName)
+{
      EFI_STATUS Status;
-     EFI_FILE_PROTOCOL *file;     
+     EFI_FILE_PROTOCOL *file;
      Status = Volume->Open(Volume, &file, KernelImageName, EFI_FILE_READ_ONLY, 0); // Open volume to get file handle of kernel image
 
      if (Status != EFI_SUCCESS && EFI_ERROR(Status))
@@ -326,11 +337,11 @@ VOID *getKernelImagePages(EFI_SYSTEM_TABLE *SystemTable, EFI_FILE_PROTOCOL *Volu
           return NULL;
      }
 
-     VOID *buffer;
-     UINTN fileSize = GetFileSize(file); // Get size of file
+     EFI_PHYSICAL_ADDRESS buffer = 0x100000;              // Kernel will be loaded at address 0x100000
+     UINTN fileSize = GetFileSize(file);                  // Get size of file
      UINTN pagesToAllocate = EFI_SIZE_TO_PAGES(fileSize); // Convert file size to page equivalent
 
-     Status = SystemTable->BootServices->AllocatePages(AllocateAnyPages, EfiLoaderData, pagesToAllocate, (EFI_PHYSICAL_ADDRESS*)(VOID*)&buffer); // Allocate pages 
+     Status = SystemTable->BootServices->AllocatePages(AllocateAddress, EfiLoaderData, pagesToAllocate, &buffer); // Allocate pages at specific address
 
      if (Status != EFI_SUCCESS && EFI_ERROR(Status))
      {
@@ -338,10 +349,10 @@ VOID *getKernelImagePages(EFI_SYSTEM_TABLE *SystemTable, EFI_FILE_PROTOCOL *Volu
           setTextColour(SystemTable, EFI_RED);
           Print(SystemTable, L"FATAL ERROR: Failed to allocate pages for kernel image.\n");
           Delay(SystemTable, 5);
-          return FALSE;
+          return NULL;
      }
 
-     Status = file->Read(file, &fileSize, buffer); // Load file content into pages
+     Status = file->Read(file, &fileSize, (VOID *)buffer); // Load file content into pages
 
      if (Status != EFI_SUCCESS && EFI_ERROR(Status))
      {
@@ -349,11 +360,10 @@ VOID *getKernelImagePages(EFI_SYSTEM_TABLE *SystemTable, EFI_FILE_PROTOCOL *Volu
           setTextColour(SystemTable, EFI_RED);
           Print(SystemTable, L"FATAL ERROR: Failed to read kernel image into Pages.\n");
           Delay(SystemTable, 5);
-          return FALSE;
+          return NULL;
      }
-     
-     Status = file->Close(file); // Close file handle
 
+     Status = file->Close(file); // Close file handle
 
      if (Status != EFI_SUCCESS && EFI_ERROR(Status))
      {
@@ -361,57 +371,59 @@ VOID *getKernelImagePages(EFI_SYSTEM_TABLE *SystemTable, EFI_FILE_PROTOCOL *Volu
           setTextColour(SystemTable, EFI_RED);
           Print(SystemTable, L"FATAL ERROR: Failed to close kernel file handle.\n");
           Delay(SystemTable, 5);
-          return FALSE;
+          return NULL;
      }
 
-     return buffer;
+     return (VOID *)buffer;
 }
-
 
 BOOLEAN checkKernelMagicNumber(EFI_SYSTEM_TABLE *SystemTable, VOID *Buffer)
 {
      UINT32 MagicNumber;
      UINT64 Offset = 0x202; // Kernel image magic number offset
-     UINT8* byteBuffer = (UINT8*) Buffer;
+     UINT8 *byteBuffer = (UINT8 *)Buffer;
 
      // Use CopyMem to ensure we don't run into alignment issues.
      SystemTable->BootServices->CopyMem(&MagicNumber, byteBuffer + Offset, sizeof(MagicNumber));
 
      MagicNumber = toLittleEndian(MagicNumber); // Convert to little endian form
-     
+
      setTextPosition(SystemTable, 4, 4);
 
-     if (MagicNumber != toLittleEndian(0x53726448)) { // Magic number '0x53726448' in little endian format 
-         clearScreen(SystemTable);
-         setTextColour(SystemTable, EFI_RED);
-         Print(SystemTable, L"FATAL ERROR: Kernel image boot protocol version is old.");
-         Delay(SystemTable, 5);
-         return FALSE;
-     } else if (MagicNumber == toLittleEndian(0x53726448)) {
-         Print(SystemTable, L"Kernel magic number 0x53726448 found...\n");
-         Delay(SystemTable, 1);
-         return TRUE;
+     if (MagicNumber != toLittleEndian(0x53726448))
+     { // Magic number '0x53726448' in little endian format
+          clearScreen(SystemTable);
+          setTextColour(SystemTable, EFI_RED);
+          Print(SystemTable, L"FATAL ERROR: Kernel image boot protocol version is old.");
+          Delay(SystemTable, 5);
+          return FALSE;
+     }
+     else if (MagicNumber == toLittleEndian(0x53726448))
+     {
+          Print(SystemTable, L"Kernel magic number 0x53726448 found...\n");
+          Delay(SystemTable, 1);
+          return TRUE;
      }
 
      return FALSE;
 }
 
-UINTN getSetupCodeSize(EFI_SYSTEM_TABLE *SystemTable, VOID *Buffer) {
-
+UINTN getSetupCodeSize(EFI_SYSTEM_TABLE *SystemTable, VOID *Buffer)
+{
      UINT8 setupSects;
      UINT64 Offset = 0x1f1;
-     UINT8* byteBuffer = (UINT8*) Buffer; // We need to read a byte at offset 0x1f1 so we use UINT8 *
-     
+     UINT8 *byteBuffer = (UINT8 *)Buffer; // We need to read a byte at offset 0x1f1 so we use UINT8 *
+
      // Use CopyMem to ensure we don't run into alignment issues.
      SystemTable->BootServices->CopyMem(&setupSects, byteBuffer + Offset, sizeof(setupSects));
 
      setTextPosition(SystemTable, 4, 5);
 
-     if (setupSects == 0) 
-         setupSects = 4;
+     if (setupSects == 0)
+          setupSects = 4;
 
      Print(SystemTable, L"Found kernel setup code size at offset 0x1f1 '");
-     printNum(SystemTable, setupSects*512);
+     printNum(SystemTable, setupSects * 512);
      Print(SystemTable, L"'...\n");
      Delay(SystemTable, 1);
 
@@ -420,38 +432,38 @@ UINTN getSetupCodeSize(EFI_SYSTEM_TABLE *SystemTable, VOID *Buffer) {
      return setupSects;
 }
 
-UINTN getSetupHeaderEnd(EFI_SYSTEM_TABLE *SystemTable, VOID *Buffer) {
-
+UINTN getSetupHeaderEnd(EFI_SYSTEM_TABLE *SystemTable, VOID *Buffer)
+{
      EFI_STATUS Status;
      UINT8 endValue;
      UINT64 Offset = 0x0201;
 
-     UINT8* byteBuffer = (UINT8*) Buffer;
+     UINT8 *byteBuffer = (UINT8 *)Buffer;
 
      SystemTable->BootServices->CopyMem(&endValue, byteBuffer + Offset, sizeof(endValue)); // Read byte at offset from kernel image pages
 
      setTextPosition(SystemTable, 4, 6);
      Print(SystemTable, L"Found setup header end value at offset 0x0201 '");
-     printNum(SystemTable, endValue+0x0202);
+     printNum(SystemTable, endValue + 0x0202);
      Print(SystemTable, L"'...\n");
      Delay(SystemTable, 1);
 
      return 0x0202 + endValue;
 }
 
-VOID extractLoadSetupHeader(EFI_SYSTEM_TABLE *SystemTable, VOID *Buffer, struct boot_params *boot_params, UINTN setupHeaderEnd) {
-    
-    UINT64 Offset = 0x01f1; // Start of setup header
-    UINT8* byteBuffer = (UINT8*) Buffer;
-    SystemTable->BootServices->CopyMem(&boot_params->hdr, byteBuffer + Offset, setupHeaderEnd - Offset); // Copy the setup_header starting at offset 0x1f1 of size setupHeaderEnd - offset
-                                                                                                         // Into the hdr field of the boot_params struct
-    setTextPosition(SystemTable, 4, 7);
-    Print(SystemTable, L"Loading setup_header into boot_params->hdr...\n");
-    Delay(SystemTable, 1);
+VOID extractLoadSetupHeader(EFI_SYSTEM_TABLE *SystemTable, VOID *Buffer, struct boot_params *boot_params, UINTN setupHeaderEnd)
+{
+     UINT64 Offset = 0x01f1; // Start of setup header
+     UINT8 *byteBuffer = (UINT8 *)Buffer;
+     SystemTable->BootServices->CopyMem(&boot_params->hdr, byteBuffer + Offset, setupHeaderEnd - Offset); // Copy the setup_header starting at offset 0x1f1 of size setupHeaderEnd - offset
+                                                                                                          // Into the hdr field of the boot_params struct
+     setTextPosition(SystemTable, 4, 7);
+     Print(SystemTable, L"Loading setup_header into boot_params->hdr...\n");
+     Delay(SystemTable, 1);
 }
 
-VOID printBootProtocolVersion(EFI_SYSTEM_TABLE *SystemTable, struct setup_header *setup_header) {
-
+VOID printBootProtocolVersion(EFI_SYSTEM_TABLE *SystemTable, struct setup_header *setup_header)
+{
      setTextPosition(SystemTable, 4, 8);
      Print(SystemTable, L"Boot protocol version: ");
      printNum(SystemTable, setup_header->version >> 8);
@@ -460,15 +472,17 @@ VOID printBootProtocolVersion(EFI_SYSTEM_TABLE *SystemTable, struct setup_header
      Print(SystemTable, L"\n");
 }
 
-VOID validateBootSector(EFI_SYSTEM_TABLE *SystemTable, struct setup_header *setup_header) {
-
+VOID validateBootSector(EFI_SYSTEM_TABLE *SystemTable, struct setup_header *setup_header)
+{
      setTextPosition(SystemTable, 4, 9);
 
-     if (setup_header->boot_flag == 0xAA55) {
-         Print(SystemTable, L"Setup header boot sector value validated, value '0xAA55' found...\n ");
-         Delay(SystemTable, 1);
+     if (setup_header->boot_flag == 0xAA55)
+     {
+          Print(SystemTable, L"Setup header boot sector value validated, value '0xAA55' found...\n ");
+          Delay(SystemTable, 1);
      }
-     else {
+     else
+     {
           clearScreen(SystemTable);
           setTextColour(SystemTable, EFI_RED);
           Print(SystemTable, L"FATAL ERROR: Kernel setup header contains invalid boot sector.\n");
@@ -476,27 +490,206 @@ VOID validateBootSector(EFI_SYSTEM_TABLE *SystemTable, struct setup_header *setu
      }
 }
 
-VOID printKernelVersion(EFI_SYSTEM_TABLE *SystemTable, struct setup_header *setup_header, VOID *Buffer) {
-    
-    if (setup_header->kernel_version != 0) {
+VOID printKernelVersion(EFI_SYSTEM_TABLE *SystemTable, struct setup_header *setup_header, VOID *Buffer)
+{
 
-        UINT8 *byteBuffer = (UINT8*) Buffer;
-        CHAR16 kernel_version[128];
-        UINT32 kernel_version_offset = setup_header->kernel_version + 0x200;
-        CHAR8* kernel_version_string = (CHAR8*)byteBuffer + kernel_version_offset;
-        UINTN i;
+     if (setup_header->kernel_version != 0)
+     {
+          UINT8 *byteBuffer = (UINT8 *)Buffer;
+          CHAR16 kernel_version[128];
+          UINT32 kernel_version_offset = setup_header->kernel_version + 0x200;
+          CHAR8 *kernel_version_string = (CHAR8 *)byteBuffer + kernel_version_offset;
+          UINTN i;
 
-        for(i = 0; i < 127 && kernel_version_string[i]; ++i) {
-            if (kernel_version_string[i] == ' ') break;
-            kernel_version[i] = (CHAR16)kernel_version_string[i];
-        }
+          for (i = 0; i < 127 && kernel_version_string[i]; ++i)
+          {
+               if (kernel_version_string[i] == ' ')
+                    break;
+               kernel_version[i] = (CHAR16)kernel_version_string[i];
+          }
 
-        kernel_version[i] = L'\0';
+          kernel_version[i] = L'\0';
 
-        setTextPosition(SystemTable, 4, 10);
-        Print(SystemTable, L"Kernel Version: ");
-        Print(SystemTable, kernel_version);
-        Print(SystemTable, L"\n");
-        Delay(SystemTable, 1);
-    }
+          setTextPosition(SystemTable, 4, 10);
+          Print(SystemTable, L"Kernel Version: ");
+          Print(SystemTable, kernel_version);
+          Print(SystemTable, L"\n");
+
+          Delay(SystemTable, 1);
+     }
+}
+
+VOID obtainMemoryMap(EFI_SYSTEM_TABLE *SystemTable, UINTN *MemoryMapSize, EFI_MEMORY_DESCRIPTOR **MemoryMap, UINTN *MapKey, UINTN *DescriptorSize, UINT32 *DescriptorVersion)
+{
+
+     /*
+          In order to obtain memory map args should have the following values:
+
+          UINTN MemoryMapSize = 0;
+          EFI_MEMORY_DESCRIPTOR *MemoryMap = NULL;
+          UINTN MapKey;
+          UINTN DescriptorSize;
+          UINT32 DescriptorVersion;
+     */
+
+     EFI_STATUS Status;
+
+     // First, get the memory map size, using NULL causes it to write the needed size into MemoryMapSize
+     Status = SystemTable->BootServices->GetMemoryMap(MemoryMapSize, *MemoryMap, MapKey, DescriptorSize, DescriptorVersion);
+
+     *MemoryMapSize += 2 * *DescriptorSize; // Allocate additional space to be safe, since we have the size of the memory map and are now allocating more memory and increasing the size of the MemoryMap
+     Status = SystemTable->BootServices->AllocatePool(EfiLoaderData, *MemoryMapSize, (void **)MemoryMap);
+
+     if (EFI_ERROR(Status))
+     {
+          clearScreen(SystemTable);
+          setTextColour(SystemTable, EFI_RED);
+          Print(SystemTable, L"FATAL ERROR: Failed to allocate pool for memory map.\n");
+          Delay(SystemTable, 5);
+          return;
+     }
+
+     // Now, get the memory map
+     Status = SystemTable->BootServices->GetMemoryMap(MemoryMapSize, *MemoryMap, MapKey, DescriptorSize, DescriptorVersion);
+
+     if (EFI_ERROR(Status))
+     {
+          clearScreen(SystemTable);
+          setTextColour(SystemTable, EFI_RED);
+          Print(SystemTable, L"FATAL ERROR: Failed to obtain memory map.\n");
+          Delay(SystemTable, 5);
+          return;
+     }
+}
+
+VOID *loadInitrd(EFI_SYSTEM_TABLE *SystemTable, EFI_FILE_PROTOCOL *Volume, CHAR16 *InitrdImageName, struct setup_header *setup_header)
+{
+     EFI_STATUS Status;
+     EFI_FILE_PROTOCOL *file;
+     EFI_PHYSICAL_ADDRESS buffer;
+
+     setTextPosition(SystemTable, 4, 10);
+     Print(SystemTable, L"Loading initram disk...\n");
+
+     Status = Volume->Open(Volume, &file, InitrdImageName, EFI_FILE_READ_ONLY, 0); // Open volume to get file handle of Initrd image
+
+     if (Status != EFI_SUCCESS && EFI_ERROR(Status))
+     {
+          clearScreen(SystemTable);
+          setTextColour(SystemTable, EFI_RED);
+          Print(SystemTable, L"FATAL ERROR: Failed to open initrd image.\n");
+          Delay(SystemTable, 5);
+          return NULL;
+     }
+
+     UINTN fileSize = GetFileSize(file);                  // Get size of the Initrd file
+     UINTN pagesToAllocate = EFI_SIZE_TO_PAGES(fileSize);          // Convert file size to page equivalent
+
+     if (setup_header->initrd_addr_max == 0) // If no memory address load limit is defined
+     {
+          Status = SystemTable->BootServices->AllocatePages(AllocateAnyPages, EfiLoaderData, pagesToAllocate, &buffer); // Allocate pages at any address
+     }
+     else // Otherwise obtain memory map and use first fit page-based memory allocation to find suitable location to load initrd into
+     {
+          UINTN MemoryMapSize = 0;
+          EFI_MEMORY_DESCRIPTOR *MemoryMap = NULL;
+          UINTN MapKey;
+          UINTN DescriptorSize;
+          UINT32 DescriptorVersion;
+
+          obtainMemoryMap(SystemTable, &MemoryMapSize, &MemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
+
+          EFI_MEMORY_DESCRIPTOR *currentDescriptor = MemoryMap;
+          buffer = (EFI_PHYSICAL_ADDRESS) -1; // Stores base address that we load initrd into
+
+          for (UINTN i = 0; i < MemoryMapSize; i += DescriptorSize) // Go thorugh all the descriptors memory map size == numberOfdescriptors*DescriptorSize
+          {
+               if (currentDescriptor->Type == EfiConventionalMemory &&                           // If current descriptor is free
+                   currentDescriptor->NumberOfPages >= pagesToAllocate &&                        // If number of pages of descriptor is enough to load initrd file  
+                   currentDescriptor->PhysicalStart + fileSize <= setup_header->initrd_addr_max) // If the chunk is less than the initrd max address value
+               {
+                   buffer = currentDescriptor->PhysicalStart;
+                   break;
+               }
+
+               currentDescriptor = (EFI_MEMORY_DESCRIPTOR *)((UINT8 *)currentDescriptor + DescriptorSize); // When going through descriptors we dont index with i, instead we use pointer arithmetic and add DescriptorSize, since this defines the size of each descriptor (descriptor sizes can vary)
+          }
+
+          if (buffer == (EFI_PHYSICAL_ADDRESS) -1) {
+              clearScreen(SystemTable);
+              setTextColour(SystemTable, EFI_RED);
+              Print(SystemTable, L"FATAL ERROR: Failed to load initrd below initrd_addr_max bound.\n");
+              Delay(SystemTable, 5);
+              return NULL; 
+          }
+
+          Status = SystemTable->BootServices->AllocatePages(AllocateAddress, EfiLoaderData, pagesToAllocate, &buffer);
+     }
+
+     if (Status != EFI_SUCCESS && EFI_ERROR(Status))
+     {
+          clearScreen(SystemTable);
+          setTextColour(SystemTable, EFI_RED);
+          Print(SystemTable, L"FATAL ERROR: Failed to allocate pages for initrd image.\n");
+          Delay(SystemTable, 5);
+          return NULL;
+     }
+
+     Status = file->Read(file, &fileSize, (VOID *)buffer); // Load file content into pages
+
+     if (Status != EFI_SUCCESS && EFI_ERROR(Status))
+     {
+          clearScreen(SystemTable);
+          setTextColour(SystemTable, EFI_RED);
+          Print(SystemTable, L"FATAL ERROR: Failed to read initrd image into pages.\n");
+          Delay(SystemTable, 5);
+          return NULL;
+     }
+
+     Status = file->Close(file); // Close file handle
+
+     if (Status != EFI_SUCCESS && EFI_ERROR(Status))
+     {
+          clearScreen(SystemTable);
+          setTextColour(SystemTable, EFI_RED);
+          Print(SystemTable, L"FATAL ERROR: Failed to close initrd file handle.\n");
+          Delay(SystemTable, 5);
+          return NULL;
+     }
+
+     setup_header->ramdisk_image = (UINT32)buffer; // Update boot_params with ramdisk data
+     setup_header->ramdisk_size = (UINT32)fileSize;
+
+     return (VOID *)buffer;
+}
+
+VOID jumpToEntry(EFI_SYSTEM_TABLE *SystemTable, EFI_HANDLE *ImageHandle)
+{
+     EFI_STATUS Status;
+
+     EFI_PHYSICAL_ADDRESS KernelBase = 0x100000;         // Kernel start address, it is loaded here
+     EFI_PHYSICAL_ADDRESS JumpAddr = KernelBase + 0x200; // Address to jump to, in order to start kernel
+
+     UINTN MemoryMapSize = 0;
+     EFI_MEMORY_DESCRIPTOR *MemoryMap = NULL;
+     UINTN MapKey;
+     UINTN DescriptorSize;
+     UINT32 DescriptorVersion;
+
+     obtainMemoryMap(SystemTable, &MemoryMapSize, &MemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
+
+     setTextPosition(SystemTable, 4, 10);
+     Print(SystemTable, L"MemoryMap obtained...\n");
+     Delay(SystemTable, 1);
+
+     setTextPosition(SystemTable, 4, 11);
+     Print(SystemTable, L"Jumping to kernel entry point...\n");
+     Delay(SystemTable, 1);
+
+     typedef void (*KernelEntryPoint)(void);
+     KernelEntryPoint jmp = (KernelEntryPoint)JumpAddr;
+     
+     SystemTable->BootServices->ExitBootServices(ImageHandle, MapKey);
+
+     jmp();
 }
