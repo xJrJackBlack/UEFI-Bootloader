@@ -65,3 +65,13 @@ The bootloader uses a configuration file which is reads to determine which kerne
 
 
 
+
+
+
+
+- CPU in 64-bit mode (Using 64 bit OVMF firmware so this is fine)
+- Enable paging (UEFI enables paging by default so this is fine)
+- Kernel, boot_params and cmdline should be identity mapped (physical and virtual memory addresses should be identical) (AllocatePages() and AllocatePool() use identity mapped paging by default so this is fine)
+
+
+
