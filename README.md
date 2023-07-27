@@ -79,4 +79,8 @@ A GDT (Global Descriptor Table) is a table in memory used by operating systems t
 
 The two main memory management schemes are segmentation and paging, however modern OS's (mainly x86_64) use paging due to its slew of advantages when compared to segmentation. This however does not mean that segmentation is not used at all, infact a lot of OS's use a combination of paging and segmentation.
 
+An entry in the GDT is known as a descriptor, a descriptor can be thought of as an object of sorts which contains information about a specific segement. Descriptors normally include information such as:
 
+- The base address of the segment
+- The size of the segment
+- The permissions associated with the segment
