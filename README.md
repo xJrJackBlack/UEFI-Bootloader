@@ -67,11 +67,14 @@ The bootloader uses a configuration file which is reads to determine which kerne
 
 
 
-
-
 - CPU in 64-bit mode (Using 64 bit OVMF firmware so this is fine)
 - Enable paging (UEFI enables paging by default so this is fine)
 - Kernel, boot_params and cmdline should be identity mapped (physical and virtual memory addresses should be identical) (AllocatePages() and AllocatePool() use identity mapped paging by default so this is fine)
+
+
+
 - Add dummy GDT (Global Descriptor Table) with values 
+
+A GDT (Global Descriptor Table) is a table in memory used by operating systems to reference different memory segments and information about memory segments. A memory segment is simply a chunk of memory, different segments could be used for different things in the operating system. The two main memory management schemes are segmentation and paging, however modern OS's (mainly x86_64) use paging due to its slew of advantages when compared to segmentation, this however does not mean that segmentation is not used at all, infact a lot of OS's use a combination of paging and segmentation.
 
 
