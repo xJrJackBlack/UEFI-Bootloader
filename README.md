@@ -75,12 +75,12 @@ The bootloader uses a configuration file which is reads to determine which kerne
 
 - Add dummy GDT (Global Descriptor Table) with values 
 
-A GDT (Global Descriptor Table) is a table in memory used by operating systems to reference different memory segments and information about memory segments. A memory segment is simply a chunk of memory, different segments could be used for different things in the operating system.
-
-The two main memory management schemes are segmentation and paging, however modern OS's (mainly x86_64) use paging due to its slew of advantages when compared to segmentation. This however does not mean that segmentation is not used at all, infact a lot of OS's use a combination of paging and segmentation.
+A GDT (Global Descriptor Table) is a table in memory used by operating systems to reference various peices of information about memory segments. A memory segment is simply a chunk of memory, different segments could be used for different things in the operating system.
 
 An entry in the GDT is known as a descriptor, a descriptor can be thought of as an object of sorts which contains information about a specific segement. Descriptors normally include information such as:
 
 - The base address of the segment
 - The size of the segment
 - The permissions associated with the segment
+
+However in long mode (64-bit mode) the GDT values related to the size of a segment or bounds are largely ignored, instead the main use of the GDT is to reference permission and privilege information about memory segments. 
