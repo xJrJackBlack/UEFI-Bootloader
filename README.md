@@ -84,3 +84,9 @@ An entry in the GDT is known as a descriptor, a descriptor can be thought of as 
 - The permissions associated with the segment
 
 However in long mode (64-bit mode) the GDT values related to the size of a segment or bounds are largely ignored, instead the main use of the GDT is to reference permission and privilege information about memory segments. 
+
+As per the [64-bit boot protocol](https://www.kernel.org/doc/html/v5.4/x86/boot.html#id1) The GDT must be loaded with 2 descriptors, each of size 4GB and each one should be a 'flat segment', this essentially means that we must use a 'flat memory model'.
+
+A flat memory model is essentially a memory model where memory is treated as a single contiguous address space. So this means the two segments descriptors we add to the GDT will both have a base address (start address) of 0. But as mentioned previously the size and bounds information of segments is ignored in 64-bit mode, so how are memory limits and allocations and sizes of chunks of memory handled if long mode does not use the limit and base values of the GDT descriptors?
+
+Well this is handled using paging. Paging is a memory management scheme where a layer of abstraction is added on top of physical memory addresses with virtual memory addresses. In essense different physical addresses map to different virtual addresses and by adding this layer, the computer is able to effectively assign map a number of X physical addresses to some virtual addresses wthout the need for the physical addresses being contiguous and next to each other, instead the virtual addresses makes it seem like the addresses are in fact contiguous.
