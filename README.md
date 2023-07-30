@@ -95,11 +95,23 @@ Well this is handled using paging. Paging is a memory management scheme where a 
 ## Segment selectors
 
 The two descriptors that should be added to the GDT are the CS (code segment) and DS (data segment) descriptors
-__BOOT_CS(0x10) and __BOOT_DS(0x18)
+__BOOT_CS(0x10) and __BOOT_DS(0x18) however what are the numbers 0x10 and 0x18? these are known as segment selectors are are 16-bit values which allow us to essentially offset into the GDT, various bits of the segment selector represent different pieces of information and we need to check what the segment descriptors 0x10 and 0x18 represent so we can add the CS and DS descriptors in the correct index in the GDT.
+
+Starting with the CS segment selector 0x10:
+- 0x10 as a 16 bit binary value is 0000000000010000
+- The last 2 bits represent the requested privilege level (RPL)
+- The first 13 bits represent the index into the GDT (Index)
+- The remaining bit signifies if the GDT or the LDT is used (0 for GDT)
+
+Index          TI   RPL
+0000000000010   0    00
+
+So in this in the GDT we must add a segment descriptor at index 0000000000010 aka 2
 
 
+Similarly with the DS segment selector 0x18:
 
+Index            TI RPL
+0000000000011    0  00
 
-
-
-
+So in this in the GDT we must add a segment descriptor at index 0000000000011 aka 3
