@@ -2,6 +2,13 @@
 #include "uefi_lib.h"
 #include "linux.h"
 
+static void
+start_kernel(
+    VOID *kernel,
+    const struct boot_params *boot_params,
+    struct gdt_ptr_struct *gdt_ptr,
+    UINTN realModeCodeSize, EFI_SYSTEM_TABLE *SystemTable, EFI_HANDLE ImageHandle);
+    
 EFI_STATUS
 EFIAPI
 efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
@@ -21,7 +28,6 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
         }
         else if (Key.UnicodeChar == L'b' || Key.UnicodeChar == L'B')
         {
-
         }
         else if (Key.UnicodeChar == L's' || Key.UnicodeChar == L'S')
         {
@@ -32,8 +38,8 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 
     EFI_FILE_PROTOCOL *Volume = GetVolume(SystemTable, ImageHandle);   // Open EFI FAT32 filesystem
     EFI_FILE_PROTOCOL *file = checkForConfigFile(SystemTable, Volume); // Check if 'simple.cfg' exists and if so points to it
-    VOID *FileContents = NULL;                                         // Points to memory where file contents are stored 
-    UINTN fileSize = GetFileSize(file);                       // Stores size of file contents
+    VOID *FileContents = NULL;                                         // Points to memory where file contents are stored
+    UINTN fileSize = GetFileSize(file);                                // Stores size of file contents
 
     if (file != NULL)
     {
@@ -48,12 +54,12 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 
     checkKernelMagicNumber(SystemTable, kernelBuffer); // validate kernel image magic number/signature
 
-    UINTN setupCodeSize = getSetupCodeSize(SystemTable,kernelBuffer); // get size of setup code from kernel image
-    UINTN realModeCodeSize = 512 + setupCodeSize; 
+    UINTN setupCodeSize = getSetupCodeSize(SystemTable, kernelBuffer); // get size of setup code from kernel image
+    UINTN realModeCodeSize = 512 + setupCodeSize;
 
     struct boot_params *boot_params;
     SystemTable->BootServices->AllocatePool(EfiLoaderData, sizeof(struct boot_params), (VOID **)&boot_params); // Allocate memory for boot_params
-    SystemTable->BootServices->SetMem(boot_params, sizeof(struct boot_params), 0); // Initialise to all zero
+    SystemTable->BootServices->SetMem(boot_params, sizeof(struct boot_params), 0);                             // Initialise to all zero
 
     struct setup_header *setup_header = &boot_params->hdr;
 
@@ -63,25 +69,109 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     printBootProtocolVersion(SystemTable, setup_header);
     validateBootSector(SystemTable, setup_header);
 
-    CHAR8 *cmdline;  // Will specify the kernel command line parameter in cmdline, can be used to customise kernel booting options 
-    SystemTable->BootServices->AllocatePool(EfiLoaderData, sizeof("root=/dev/sdb"), (VOID**) &cmdline);
+    CHAR8 *cmdline; // Will specify the kernel command line parameter in cmdline, can be used to customise kernel booting options
+    SystemTable->BootServices->AllocatePool(EfiLoaderData, sizeof("root=/dev/sdb"), (VOID **)&cmdline);
     SystemTable->BootServices->CopyMem(cmdline, "root=/dev/sdb", sizeof("root=/dev/sdb"));
 
-    setup_header->cmd_line_ptr = (UINT32)(uintptr_t)cmdline;    // Setting command line paramters in boot_params setup_header (hdr field)
-    setup_header->vid_mode = 0xffff;     // set vid_mode of kernel to 'normal mode'
-    setup_header->type_of_loader = 0xff; // Used to indicate the bootloaded that loaded the kernel, set to unique value so kernel can identify bootloader
+    setup_header->cmd_line_ptr = (UINT32)(uintptr_t)cmdline; // Setting command line paramters in boot_params setup_header (hdr field)
+    setup_header->vid_mode = 0xffff;                         // set vid_mode of kernel to 'normal mode'
+    setup_header->type_of_loader = 0xff;                     // Used to indicate the bootloaded that loaded the kernel, set to unique value so kernel can identify bootloader
 
     VOID *initrdBuffer = loadInitrd(SystemTable, Volume, names[1], setup_header);
 
     struct screen_info *screen_info = &boot_params->screen_info;
     videoSetup(SystemTable, screen_info);
+
+    // final paragraph
+
+    struct gdt_entry_struct gdt[4]; // 0 is null descriptor, 1 is null descriptor, 2 is __BOOT_CS(0x10), 3 is __BOOT_DS(0X18)
     
-    jumpToEntry(SystemTable, ImageHandle, realModeCodeSize);
 
-    __asm__("movl %edx, %eax\n\t"
-        "addl $2, %eax\n\t");
+    // base_low, base_middle and base_high must be set to 0, since we are using flat memory model 
+    // where every segments base address starts at 0
 
-    Delay(SystemTable, 5);
+    gdt[0].limit_low    = 0;           
+    gdt[0].base_low     = 0;           
+    gdt[0].base_middle  = 0;      // Setting NULL descriptor at gdt[0]
+    gdt[0].access       = 0;              
+    gdt[0].granularity  = 0;
+    gdt[0].base_high    = 0;
+
+    gdt[1].limit_low    = 0;           
+    gdt[1].base_low     = 0;           
+    gdt[1].base_middle  = 0;      // Setting NULL descriptor at gdt[1]
+    gdt[1].access       = 0;              
+    gdt[1].granularity  = 0;
+    gdt[1].base_high    = 0;
+
+
+    gdt[2].limit_low    = 0xFFFF; // Setting __BOOT_CS(0x10) descriptor at gdt[2]
+    gdt[2].base_low     = 0;      // Because segment selector 0x10 in 16 bit binary looks like:     
+    gdt[2].base_middle  = 0;      // Index           TI   RPL
+                                  // 0000000000010   0    00
+    gdt[2].access       = 0x9A;   // __BOOT_CS(0x10) has execute/read           
+    gdt[2].granularity  = 0xCF;
+    gdt[2].base_high    = 0;
+
+
+    gdt[3].limit_low    = 0xFFFF; // Setting __BOOT_DS(0x18) descriptor at gdt[3]          
+    gdt[3].base_low     = 0;      // Because segment selector 0x18 in 16 bit binary looks like:     
+    gdt[3].base_middle  = 0;      // Index           TI  RPL
+                                  // 0000000000011   0   00
+    gdt[3].access       = 0x92;   // __BOOT_DS(0x18) has read/write           
+    gdt[3].granularity  = 0xCF;
+    gdt[3].base_high    = 0;
+
+    struct gdt_ptr_struct gdt_ptr;
+    
+    gdt_ptr.limit = sizeof(gdt) - 1;
+    gdt_ptr.base  = (UINT64) gdt;
+
+    start_kernel(kernelBuffer, boot_params, &gdt_ptr, realModeCodeSize, SystemTable, ImageHandle);
+  
+    Delay(SystemTable, 60);
 
     return 0;
+}
+
+static void
+start_kernel(
+    VOID *kernel,
+    const struct boot_params *boot_params,
+    struct gdt_ptr_struct *gdt_ptr,
+    UINTN realModeCodeSize, EFI_SYSTEM_TABLE *SystemTable, EFI_HANDLE ImageHandle)
+{
+    __asm__ volatile("cli" ::: "memory");                  // Disable interrupts
+    __asm__ volatile("movq %0, %%rsi" ::"r"(boot_params)); // Load boot_params base address into $rsi
+    __asm__ volatile("lgdt %0" :: "m"(gdt_ptr));           // Use lgdt instruction to load gdt   
+
+    __asm__ volatile("mov $0x10, %ax");  // move __BOOT_CS value into ax register
+    __asm__ volatile("mov %ax, %cs");    // set Code Segment register
+
+    __asm__ volatile("mov $0x18, %ax");  // move __BOOT_DS value into ax register
+    __asm__ volatile("mov %ax, %ds");    // set Data Segment register
+    __asm__ volatile("mov %ax, %es");    // set Extra Segment register
+    __asm__ volatile("mov %ax, %ss");    // set Stack Segment register
+
+
+    EFI_PHYSICAL_ADDRESS KernelBase = (EFI_PHYSICAL_ADDRESS)(kernel + realModeCodeSize); // Kernel start address, it is loaded here
+    EFI_PHYSICAL_ADDRESS JumpAddr = (EFI_PHYSICAL_ADDRESS)(KernelBase + 0x200);            // Address to jump to, in order to start kernel
+
+    UINTN MemoryMapSize = 0;
+    EFI_MEMORY_DESCRIPTOR *MemoryMap = NULL;
+    UINTN MapKey;
+    UINTN DescriptorSize;
+    UINT32 DescriptorVersion;
+
+    obtainMemoryMap(SystemTable, &MemoryMapSize, &MemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
+
+    setTextPosition(SystemTable, 4, 12);
+    Print(SystemTable, L"Jumping to kernel entry point...\n");
+    Delay(SystemTable, 1);
+
+    SystemTable->BootServices->ExitBootServices(ImageHandle, MapKey);
+
+    typedef void (*KernelEntryPoint)(void);
+    KernelEntryPoint jmp = (KernelEntryPoint)JumpAddr;
+    jmp();
 }

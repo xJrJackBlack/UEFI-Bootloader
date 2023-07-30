@@ -327,3 +327,19 @@ struct boot_params {
     struct edd_info eddbuf[EDDMAXNR];        /* 0xd00 */
     UINT8  _pad9[276];                /* 0xeec */
 } __attribute__((packed));
+
+struct gdt_entry_struct        // Represents an entry in the gdt
+{
+   UINT16 limit_low;           // The lower 16 bits of the limit.
+   UINT16 base_low;            // The lower 16 bits of the base.
+   UINT8  base_middle;         // The next 8 bits of the base.
+   UINT8  access;              // Access flags, determine what ring this segment can be used in.
+   UINT8  granularity;
+   UINT8  base_high;           // The last 8 bits of the base.
+} __attribute__((packed));
+
+struct gdt_ptr_struct
+{
+   UINT16 limit;               // The upper 16 bits of all selector limits.
+   UINT64 base;                // The address of the first gdt_entry_t struct.
+} __attribute__((packed));

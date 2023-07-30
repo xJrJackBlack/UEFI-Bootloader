@@ -727,29 +727,3 @@ VOID videoSetup(EFI_SYSTEM_TABLE *SystemTable, struct screen_info *screen_info) 
      screen_info->lfb_linelength   = Gop->Mode->Info->PixelsPerScanLine * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL);
      screen_info->capabilities     = VIDEO_CAPABILITY_64BIT_BASE;
 }
-
-VOID jumpToEntry(EFI_SYSTEM_TABLE *SystemTable, EFI_HANDLE *ImageHandle, UINTN realModeCodeSize)
-{
-     EFI_STATUS Status;
-
-     EFI_PHYSICAL_ADDRESS KernelBase = (EFI_PHYSICAL_ADDRESS)(0x100000 + realModeCodeSize); // Kernel start address, it is loaded here
-     EFI_PHYSICAL_ADDRESS JumpAddr = (EFI_PHYSICAL_ADDRESS)(KernelBase + 0x200); // Address to jump to, in order to start kernel
-
-     UINTN MemoryMapSize = 0;
-     EFI_MEMORY_DESCRIPTOR *MemoryMap = NULL;
-     UINTN MapKey;
-     UINTN DescriptorSize;
-     UINT32 DescriptorVersion;
-
-     obtainMemoryMap(SystemTable, &MemoryMapSize, &MemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
-
-     setTextPosition(SystemTable, 4, 12);
-     Print(SystemTable, L"Jumping to kernel entry point...\n");
-     Delay(SystemTable, 1);
-
-     typedef void (*KernelEntryPoint)(void);
-     KernelEntryPoint jmp = (KernelEntryPoint)JumpAddr;
-     SystemTable->BootServices->ExitBootServices(ImageHandle, MapKey);
-
-     jmp();
-}
