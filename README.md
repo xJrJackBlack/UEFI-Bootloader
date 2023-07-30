@@ -103,16 +103,16 @@ Starting with the CS segment selector 0x10:
 - The first 13 bits represent the index into the GDT (Index)
 - The remaining bit signifies if the GDT or the LDT is used (0 for GDT)
 ```
-Index          TI   RPL
-0000000000010   0    00
+Index          TI  RPL
+0000000000010   0   00
 ```
 So in this in the GDT we must add a segment descriptor at index 0000000000010 aka 2
 
 
 Similarly with the DS segment selector 0x18:
 ```
-Index            TI RPL
-0000000000011    0  00
+Index          TI RPL
+0000000000011   0  00
 ```
 
 So in this in the GDT we must add a segment descriptor at index 0000000000011 aka 3
