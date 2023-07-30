@@ -111,8 +111,8 @@ So in this in the GDT we must add a segment descriptor at index 0000000000010 ak
 
 Similarly with the DS segment selector 0x18:
 ```
-Index          TI RPL
-0000000000011   0  00
+Index          TI  RPL
+0000000000011   0   00
 ```
 
 So in this in the GDT we must add a segment descriptor at index 0000000000011 aka 3
