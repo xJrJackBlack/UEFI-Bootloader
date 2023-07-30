@@ -66,9 +66,9 @@ The bootloader uses a configuration file which is reads to determine which kerne
 4) **Loading and set up initrd**: Initrd also known as the initial ramdisk is a scheme used to mount and load a temporary filesystem which will be used by the kernel during the booting process and to set up the actual root filesystem. For this step we must load the initrd file into memory in a contiguous block of memory and update the boot_params fields associated with the initial ramdisk such as boot_params->hdr->ramdisk_size which contains the size of the initrd image and boot_params->hdr->ramdisk_image which stores the address where the initrd image is loaded in memory.
 
 
-- CPU in 64-bit mode (Using 64 bit OVMF firmware so this is fine)
-- Enable paging (UEFI enables paging by default so this is fine)
-- Kernel, boot_params and cmdline should be identity mapped (physical and virtual memory addresses should be identical) (AllocatePages() and AllocatePool() use identity mapped paging by default so this is fine)
+5) **CPU in 64-bit mode**: Using 64 bit OVMF firmware so this is fine
+6) **Enable paging**: UEFI enables paging by default so this is fine
+7) **Kernel, boot_params and cmdline should be identity mapped** (physical and virtual memory addresses should be identical): AllocatePages() and AllocatePool() use identity mapped paging by default so this is fine
 
 
 
