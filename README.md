@@ -72,7 +72,7 @@ The bootloader uses a configuration file which is reads to determine which kerne
 
 
 
-# Add dummy GDT (Global Descriptor Table) with descriptors
+# 8) Add dummy GDT (Global Descriptor Table) with descriptors
 
 A GDT (Global Descriptor Table) is a table in memory used by operating systems to reference various peices of information about memory segments. A memory segment is simply a chunk of memory, different segments could be used for different things in the operating system.
 
