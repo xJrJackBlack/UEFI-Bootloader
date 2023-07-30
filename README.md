@@ -63,8 +63,7 @@ The bootloader uses a configuration file which is reads to determine which kerne
 
 3) **Initialise boot_params->hdr**: The hdr field contains various fields which in some cases can be filled out, some of the key ones include cmd_line_ptr which is a pointer to a string which specifies 'command line parameters' that can be passed to the kernel whilst booting in order to customise cerain aspects of the booting process. A common use for this is to specify the where the root filesystem should be mounted during the booting process by specifying for example 'root=/x/y/part1'. Some other common fields to set are the vid_mode field, which can be used to specify the video mode the kernel should use during the booting process, the default video mode value is 0xffff. Lastly the type_of_loader field which can be used to specify a unique value that can identify the bootloader to the kernel, a default value of 0xff is normally set here.
 
-
-
+4) **Loading and set up initrd**: Initrd also known as the initial ramdisk is a scheme used to mount and load a temporary filesystem which will be used by the kernel during the booting process and to set up the actual root filesystem. For this step we must load the initrd file into memory in a contiguous block of memory and update the boot_params fields associated with the initial ramdisk such as boot_params->hdr->ramdisk_size which contains the size of the initrd image and boot_params->hdr->ramdisk_image which stores the address where the initrd image is loaded in memory.
 
 
 - CPU in 64-bit mode (Using 64 bit OVMF firmware so this is fine)
