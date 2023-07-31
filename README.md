@@ -2,6 +2,12 @@
 A UEFI Bootloader made for Linux, below i detail the development process.
 
 
+# Features
+- Initial ramdisk support
+- Interative boot menu
+- ACPI support (coming soon)
+- UEFI 2.70 support
+
 # Tools and Resources
 
 I was going to initially use GNU-EFI and GCC for this project however i decided to use the following tools for more flexibility:
