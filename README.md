@@ -4,7 +4,7 @@ A UEFI Bootloader made for Linux, below i detail the development process.
 # In Action
 <p>
 <img src="images/bootloader_startup.png" alt="Bootloader startup" width="200" style="margin-right: 10px;"/>
-<img src="images/second_image.png" alt="Second image" width="200"/>
+<img src="images/second_image.png" alt="Second image" width="200" style= "margin-left: 10px;"/>
 </p>
 
 ![Bootloader startup](images/bootloader_startup.png)
