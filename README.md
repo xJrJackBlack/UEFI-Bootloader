@@ -8,7 +8,7 @@ A UEFI Bootloader made for Linux, this bootloader implements the 64-bit Boot Pro
 # Features
 - Initial ramdisk support
 - Interative boot menu
-- ACPI support (coming soon)
+- ACPI support
 - UEFI 2.70 support
 
 # Tools and Resources
