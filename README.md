@@ -3,9 +3,7 @@ A UEFI Bootloader made for Linux, below i detail the development process.
 
 # In Action
 
-<p>
-  <img src="https://github.com/programmer838/UEFI-Bootloader/tree/main/images/bootloader_startup.png" width = "300">
-</p>
+![Bootloader startup](images/bootloader_startup.png)
 
 # Features
 - Initial ramdisk support
