@@ -1,6 +1,10 @@
 # Unified Extensible Firmware Interface (UEFI) Linux Bootloader
 A UEFI Bootloader made for Linux, below i detail the development process.
 
+# In Action
+
+![Bootloader startup](https://github.com/programmer838/UEFI-Bootloader/tree/main/images/bootloader_startup.png?raw=true)
+
 
 # Features
 - Initial ramdisk support
