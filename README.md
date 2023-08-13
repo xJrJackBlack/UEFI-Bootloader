@@ -1,7 +1,5 @@
 # Unified Extensible Firmware Interface (UEFI) Linux Bootloader
-A UEFI Bootloader made for Linux, below i detail the development process.
-
-# In Action
+A UEFI Bootloader made for Linux, this bootloader implements the 64-bit Boot Protocol for Linux.
 
 ![Bootloader startup](images/bootloader_startup.png)
 ![Bootloader booting](images/bootloader_booting.png)
