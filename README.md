@@ -4,6 +4,8 @@ A UEFI Bootloader made for Linux, below i detail the development process.
 # In Action
 
 ![Bootloader startup](images/bootloader_startup.png)
+![Bootloader booting](images/bootloader_booting.png)
+
 
 # Features
 - Initial ramdisk support
