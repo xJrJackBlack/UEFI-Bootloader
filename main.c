@@ -127,6 +127,8 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     gdt_ptr.limit = sizeof(gdt) - 1;
     gdt_ptr.base  = (UINT64) gdt;
 
+    ACPIsetup(SystemTable, boot_params);
+
     start_kernel(kernelBuffer, boot_params, &gdt_ptr, realModeCodeSize, SystemTable, ImageHandle);
   
     Delay(SystemTable, 60);
@@ -141,22 +143,9 @@ start_kernel(
     struct gdt_ptr_struct *gdt_ptr,
     UINTN realModeCodeSize, EFI_SYSTEM_TABLE *SystemTable, EFI_HANDLE ImageHandle)
 {
-    __asm__ volatile("cli" ::: "memory");                  // Disable interrupts
-    __asm__ volatile("movq %0, %%rsi" ::"r"(boot_params)); // Load boot_params base address into $rsi
-    __asm__ volatile("lgdt %0" :: "m"(gdt_ptr));           // Use lgdt instruction to load gdt   
 
-    __asm__ volatile("mov $0x10, %ax");  // move __BOOT_CS value into ax register
-    __asm__ volatile("mov %ax, %cs");    // set Code Segment register
-
-    __asm__ volatile("mov $0x18, %ax");  // move __BOOT_DS value into ax register
-    __asm__ volatile("mov %ax, %ds");    // set Data Segment register
-    __asm__ volatile("mov %ax, %es");    // set Extra Segment register
-    __asm__ volatile("mov %ax, %ss");    // set Stack Segment register
-
-
-    EFI_PHYSICAL_ADDRESS KernelBase = (EFI_PHYSICAL_ADDRESS)(kernel + realModeCodeSize); // Kernel start address, it is loaded here
-    EFI_PHYSICAL_ADDRESS JumpAddr = (EFI_PHYSICAL_ADDRESS)(KernelBase + 0x200);            // Address to jump to, in order to start kernel
-
+    EFI_PHYSICAL_ADDRESS JumpAddr = (EFI_PHYSICAL_ADDRESS)(kernel + realModeCodeSize + 0x200);    // Address to jump to, in order to start kernel
+    
     UINTN MemoryMapSize = 0;
     EFI_MEMORY_DESCRIPTOR *MemoryMap = NULL;
     UINTN MapKey;
@@ -171,7 +160,37 @@ start_kernel(
 
     SystemTable->BootServices->ExitBootServices(ImageHandle, MapKey);
 
-    typedef void (*KernelEntryPoint)(void);
-    KernelEntryPoint jmp = (KernelEntryPoint)JumpAddr;
-    jmp();
+    /*
+    __asm__ volatile("cli" ::: "memory");                  // Disable interrupts
+    __asm__ volatile("movq %0, %%rsi" ::"r"(boot_params)); // Load boot_params base address into $rsi
+    __asm__ volatile("lgdt %0" :: "m"(gdt_ptr));           // Use lgdt instruction to load gdt   
+
+    __asm__ volatile("mov $0x18, %ax");  // move __BOOT_DS value into ax register
+    __asm__ volatile("mov %ax, %ds");    // set Data Segment register
+    __asm__ volatile("mov %ax, %es");    // set Extra Segment register
+    __asm__ volatile("mov %ax, %ss");    // set Stack Segment register
+
+    // Load __BOOT_CS(0x10) into CS segment register
+
+    __asm__ volatile("mov %0, %%rbx" :: "m" (JumpAddr));
+    __asm__ volatile("pushq $0x10");
+    __asm__ volatile("pushq %rbx");
+    __asm__ volatile("lretq");
+    */
+
+    __asm__ volatile (
+        "cli;"                       // Disable interrupts
+        "lgdt %[gdt_ptr];"           // Load GDT
+        "mov $0x18, %%ax;"           // Load __BOOT_DS value into ax
+        "mov %%ax, %%ds;"            // Set Data Segment register
+        "mov %%ax, %%es;"            // Set Extra Segment register
+        "mov %%ax, %%ss;"            // Set Stack Segment register
+        "mov %[boot_params], %%rsi;" // Load boot_params base address into rsi
+        "pushq $0x10;"               // Push __BOOT_CS(0x10)
+        "pushq %[jump_addr];"        // Push JumpAddr directly
+        "lretq"                      // Far return
+        :
+        : [boot_params] "m" (boot_params), [gdt_ptr] "m" (gdt_ptr), [jump_addr] "m" (JumpAddr)
+        : "memory", "rax", "cc"
+    );
 }

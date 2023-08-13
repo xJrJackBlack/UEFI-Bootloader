@@ -2,6 +2,7 @@
 
 #include "uefi_structures.h"
 #include "linux.h"
+#include "acpi.h"
 
 void setTextPosition(EFI_SYSTEM_TABLE *SystemTable, UINT32 Col, UINT32 Row)
 {
@@ -584,7 +585,7 @@ VOID *loadInitrd(EFI_SYSTEM_TABLE *SystemTable, EFI_FILE_PROTOCOL *Volume, CHAR1
      }
 
      UINTN fileSize = GetFileSize(file);                  // Get size of the Initrd file
-     UINTN pagesToAllocate = EFI_SIZE_TO_PAGES(fileSize);          // Convert file size to page equivalent
+     UINTN pagesToAllocate = EFI_SIZE_TO_PAGES(fileSize); // Convert file size to page equivalent
 
      if (setup_header->initrd_addr_max == 0) // If no memory address load limit is defined
      {
@@ -601,27 +602,28 @@ VOID *loadInitrd(EFI_SYSTEM_TABLE *SystemTable, EFI_FILE_PROTOCOL *Volume, CHAR1
           obtainMemoryMap(SystemTable, &MemoryMapSize, &MemoryMap, &MapKey, &DescriptorSize, &DescriptorVersion);
 
           EFI_MEMORY_DESCRIPTOR *currentDescriptor = MemoryMap;
-          buffer = (EFI_PHYSICAL_ADDRESS) -1; // Stores base address that we load initrd into
+          buffer = (EFI_PHYSICAL_ADDRESS)-1; // Stores base address that we load initrd into
 
           for (UINTN i = 0; i < MemoryMapSize; i += DescriptorSize) // Go thorugh all the descriptors memory map size == numberOfdescriptors*DescriptorSize
           {
                if (currentDescriptor->Type == EfiConventionalMemory &&                           // If current descriptor is free
-                   currentDescriptor->NumberOfPages >= pagesToAllocate &&                        // If number of pages of descriptor is enough to load initrd file  
+                   currentDescriptor->NumberOfPages >= pagesToAllocate &&                        // If number of pages of descriptor is enough to load initrd file
                    currentDescriptor->PhysicalStart + fileSize <= setup_header->initrd_addr_max) // If the chunk is less than the initrd max address value
                {
-                   buffer = currentDescriptor->PhysicalStart;
-                   break;
+                    buffer = currentDescriptor->PhysicalStart;
+                    break;
                }
 
                currentDescriptor = (EFI_MEMORY_DESCRIPTOR *)((UINT8 *)currentDescriptor + DescriptorSize); // When going through descriptors we dont index with i, instead we use pointer arithmetic and add DescriptorSize, since this defines the size of each descriptor (descriptor sizes can vary)
           }
 
-          if (buffer == (EFI_PHYSICAL_ADDRESS) -1) {
-              clearScreen(SystemTable);
-              setTextColour(SystemTable, EFI_RED);
-              Print(SystemTable, L"FATAL ERROR: Failed to load initrd below initrd_addr_max bound.\n");
-              Delay(SystemTable, 5);
-              return NULL; 
+          if (buffer == (EFI_PHYSICAL_ADDRESS)-1)
+          {
+               clearScreen(SystemTable);
+               setTextColour(SystemTable, EFI_RED);
+               Print(SystemTable, L"FATAL ERROR: Failed to load initrd below initrd_addr_max bound.\n");
+               Delay(SystemTable, 5);
+               return NULL;
           }
 
           Status = SystemTable->BootServices->AllocatePages(AllocateAddress, EfiLoaderData, pagesToAllocate, &buffer);
@@ -664,66 +666,120 @@ VOID *loadInitrd(EFI_SYSTEM_TABLE *SystemTable, EFI_FILE_PROTOCOL *Volume, CHAR1
      return (VOID *)buffer;
 }
 
-VOID videoSetup(EFI_SYSTEM_TABLE *SystemTable, struct screen_info *screen_info) {
+VOID videoSetup(EFI_SYSTEM_TABLE *SystemTable, struct screen_info *screen_info)
+{
 
      EFI_STATUS Status;
      EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop;
      Status = SystemTable->BootServices->LocateProtocol(&EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID, NULL, (VOID **)&Gop);
-     
-     if (EFI_ERROR(Status)) {
-         clearScreen(SystemTable);
-         setTextColour(SystemTable, EFI_RED);
-         Print(SystemTable, L"FATAL ERROR: Failed setup kernel video boot params.\n");
-         Delay(SystemTable, 5);
-         return;
+
+     if (EFI_ERROR(Status))
+     {
+          clearScreen(SystemTable);
+          setTextColour(SystemTable, EFI_RED);
+          Print(SystemTable, L"FATAL ERROR: Failed setup kernel video boot params.\n");
+          Delay(SystemTable, 5);
+          return;
      }
 
      setTextPosition(SystemTable, 4, 11);
      Print(SystemTable, L"Setting up graphics/video...\n");
      Delay(SystemTable, 1);
 
-     switch (Gop->Mode->Info->PixelFormat) {
-          
-          case PixelRedGreenBlueReserved8BitPerColor:
-               screen_info->lfb_depth  = 32;
-               screen_info->red_size   = 8;
-               screen_info->green_size = 8;
-               screen_info->blue_size  = 8;
-               screen_info->rsvd_size  = 8;
+     switch (Gop->Mode->Info->PixelFormat)
+     {
 
-               screen_info->red_pos    = 0;
-               screen_info->green_pos  = 8;
-               screen_info->blue_pos   = 16;
-               screen_info->rsvd_pos   = 24;
-               break;
+     case PixelRedGreenBlueReserved8BitPerColor:
+          screen_info->lfb_depth = 32;
+          screen_info->red_size = 8;
+          screen_info->green_size = 8;
+          screen_info->blue_size = 8;
+          screen_info->rsvd_size = 8;
 
-          case PixelBlueGreenRedReserved8BitPerColor:
-               screen_info->lfb_depth  = 32;
-               screen_info->blue_size  = 8;
-               screen_info->green_size = 8;
-               screen_info->red_size   = 8;
-               screen_info->rsvd_size  = 8;
+          screen_info->red_pos = 0;
+          screen_info->green_pos = 8;
+          screen_info->blue_pos = 16;
+          screen_info->rsvd_pos = 24;
+          break;
 
-               screen_info->blue_pos   = 0;
-               screen_info->green_pos  = 8;
-               screen_info->red_pos    = 16;
-               screen_info->rsvd_pos   = 24;
-               break;
-          
-          default:
-               clearScreen(SystemTable);
-               setTextColour(SystemTable, EFI_RED);
-               Print(SystemTable, L"FATAL ERROR: Unsupported pixel formal.\n");
-               Delay(SystemTable, 5);
-               return;
+     case PixelBlueGreenRedReserved8BitPerColor:
+          screen_info->lfb_depth = 32;
+          screen_info->blue_size = 8;
+          screen_info->green_size = 8;
+          screen_info->red_size = 8;
+          screen_info->rsvd_size = 8;
+
+          screen_info->blue_pos = 0;
+          screen_info->green_pos = 8;
+          screen_info->red_pos = 16;
+          screen_info->rsvd_pos = 24;
+          break;
+
+     default:
+          clearScreen(SystemTable);
+          setTextColour(SystemTable, EFI_RED);
+          Print(SystemTable, L"FATAL ERROR: Unsupported pixel formal.\n");
+          Delay(SystemTable, 5);
+          return;
      }
 
      screen_info->orig_video_isVGA = VIDEO_TYPE_EFI;
-     screen_info->lfb_base         = (UINT32) Gop->Mode->FrameBufferBase;           // Store lower 32 bits in linear frame buffer base 
-     screen_info->ext_lfb_base     = (UINT32) (Gop->Mode->FrameBufferBase >> 32);   // Store upper 32 bits in extended linear frame buffer base
-     screen_info->lfb_size         = Gop->Mode->FrameBufferSize;
-     screen_info->lfb_height       = (UINT16) Gop->Mode->Info->VerticalResolution;  // These lines set the linear frame buffer height and width
-     screen_info->lfb_width        = (UINT16) Gop->Mode->Info->HorizontalResolution;
-     screen_info->lfb_linelength   = Gop->Mode->Info->PixelsPerScanLine * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL);
-     screen_info->capabilities     = VIDEO_CAPABILITY_64BIT_BASE;
+     screen_info->lfb_base = (UINT32)Gop->Mode->FrameBufferBase;             // Store lower 32 bits in linear frame buffer base
+     screen_info->ext_lfb_base = (UINT32)(Gop->Mode->FrameBufferBase >> 32); // Store upper 32 bits in extended linear frame buffer base
+     screen_info->lfb_size = Gop->Mode->FrameBufferSize;
+     screen_info->lfb_height = (UINT16)Gop->Mode->Info->VerticalResolution; // These lines set the linear frame buffer height and width
+     screen_info->lfb_width = (UINT16)Gop->Mode->Info->HorizontalResolution;
+     screen_info->lfb_linelength = Gop->Mode->Info->PixelsPerScanLine * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL);
+     screen_info->capabilities = VIDEO_CAPABILITY_64BIT_BASE;
+}
+
+// ACPI
+
+BOOLEAN CompareGuids(EFI_GUID *guid1, EFI_GUID *guid2) // Used to compare GUID wihlst finding the RSDP data structure for ACPI support
+{
+     return (guid1->Data1 == guid2->Data1) &&
+            (guid1->Data2 == guid2->Data2) &&
+            (guid1->Data3 == guid2->Data3) &&
+            (guid1->Data4[0] == guid2->Data4[0]) &&
+            (guid1->Data4[1] == guid2->Data4[1]) &&
+            (guid1->Data4[2] == guid2->Data4[2]) &&
+            (guid1->Data4[3] == guid2->Data4[3]) &&
+            (guid1->Data4[4] == guid2->Data4[4]) &&
+            (guid1->Data4[5] == guid2->Data4[5]) &&
+            (guid1->Data4[6] == guid2->Data4[6]) &&
+            (guid1->Data4[7] == guid2->Data4[7]);
+}
+
+VOID ACPIsetup(EFI_SYSTEM_TABLE *SystemTable, struct boot_params *boot_params) // ACPI 2.0 support
+{
+     EFI_CONFIGURATION_TABLE *table = SystemTable->ConfigurationTable;
+     EFI_GUID ACPI_20 = EFI_ACPI_20_TABLE_GUID;
+
+     struct rsdp *rsdp = NULL;
+
+     setTextPosition(SystemTable, 4, 12);
+     Print(SystemTable, L"Setting up ACPI...\n");
+     Delay(SystemTable, 1);
+
+     for (UINTN i = 0; i < SystemTable->NumberOfTableEntries; i++)
+     {
+          if (CompareGuids(&table[i].VendorGuid, &ACPI_20)) // Looking for ACPI RSDP table by comparing GUID
+          {
+               rsdp = table[i].VendorTable;
+               break;
+          }
+     }
+
+     if (rsdp == NULL)
+     {
+          clearScreen(SystemTable);
+          setTextColour(SystemTable, EFI_RED);
+          Print(SystemTable, L"FATAL ERROR: Failed to setup ACPI (could not find RSDP).\n");
+          Delay(SystemTable, 5);
+          return;
+     }
+
+     // To do: Verify rsdp checksum
+     
+     boot_params->acpi_rsdp_addr = (UINT64) rsdp;
 }

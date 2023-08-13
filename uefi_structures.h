@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define EFI_SIZE_TO_PAGES(Size) (((Size) >> 12) + (((Size) & 0xfff) ? 1 : 0))
+#define EFI_SIZE_TO_PAGES(Size) (((Size) >> 12) + (((Size)&0xfff) ? 1 : 0))
 
 typedef int8_t i8;
 typedef int16_t i16;
@@ -1147,10 +1147,10 @@ struct _EFI_SIMPLE_FILE_SYSTEM_PROTOCOL
 
 // EFI_LOADED_IMAGE protocl
 
-#define EFI_LOADED_IMAGE_PROTOCOL_GUID \
-  { \
-    0x5B1B31A1, 0x9562, 0x11d2, {0x8E, 0x3F, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B } \
-  }
+#define EFI_LOADED_IMAGE_PROTOCOL_GUID                                                 \
+    {                                                                                  \
+        0x5B1B31A1, 0x9562, 0x11d2, { 0x8E, 0x3F, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B } \
+    }
 
 typedef struct
 {
@@ -1170,26 +1170,29 @@ typedef struct
 
 } EFI_LOADED_IMAGE_PROTOCOL;
 
-
 // EFI_FILE_INFO
 
-#define EFI_FILE_INFO_ID {0x09576e92, 0xa22f, 0x4840, {0xa8, 0x06, 0xeb, 0x6b, 0xad, 0x6e, 0x55, 0x65} }
+#define EFI_FILE_INFO_ID                                                               \
+    {                                                                                  \
+        0x09576e92, 0xa22f, 0x4840, { 0xa8, 0x06, 0xeb, 0x6b, 0xad, 0x6e, 0x55, 0x65 } \
+    }
 
-typedef struct {
-  UINT64                  Size;
-  UINT64                  FileSize;
-  UINT64                  PhysicalSize;
-  EFI_TIME                CreateTime;
-  EFI_TIME                LastAccessTime;
-  EFI_TIME                ModificationTime;
-  UINT64                  Attribute;
-  CHAR16                  FileName[1];
+typedef struct
+{
+    UINT64 Size;
+    UINT64 FileSize;
+    UINT64 PhysicalSize;
+    EFI_TIME CreateTime;
+    EFI_TIME LastAccessTime;
+    EFI_TIME ModificationTime;
+    UINT64 Attribute;
+    CHAR16 FileName[1];
 } EFI_FILE_INFO;
 
-typedef
-VOID
-(EFIAPI *EFI_COPY_MEM) (
-    IN VOID     *Destination,
-    IN VOID     *Source,
-    IN UINTN    Length
-);
+typedef VOID(EFIAPI *EFI_COPY_MEM)(
+    IN VOID *Destination,
+    IN VOID *Source,
+    IN UINTN Length);
+
+INTN EFIAPI CompareMem(IN CONST VOID *DestinationBuffer, IN CONST VOID *SourceBuffer,
+                       IN UINTN Length);
