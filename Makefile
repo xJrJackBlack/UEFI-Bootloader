@@ -1,30 +1,22 @@
-ARCH            = $(shell uname -m | sed s,i[3456789]86,ia32,)
+CC := clang
+LD := lld
 
-OBJS            = main.o
-TARGET          = hello.efi
+CFLAGS := -Wall -Wextra -ffreestanding -MMD -mno-red-zone -std=c11 \
+	-target x86_64-unknown-windows
+LDFLAGS := -flavor link -subsystem:efi_application -entry:efi_main
 
-EFIINC          = /usr/include/efi
-EFIINCS         = -I$(EFIINC) -I$(EFIINC)/$(ARCH) -I$(EFIINC)/protocol
-LIB             = /usr/lib
-EFILIB          = /usr/lib
-EFI_CRT_OBJS    = $(EFILIB)/crt0-efi-$(ARCH).o
-EFI_LDS         = $(EFILIB)/elf_$(ARCH)_efi.lds
+SRCS := main.c
 
-CFLAGS          = $(EFIINCS) -fno-stack-protector -fpic \
-		  -fshort-wchar -mno-red-zone -Wall 
-ifeq ($(ARCH),x86_64)
-  CFLAGS += -DEFI_FUNCTION_WRAPPER
-endif
+default: all
 
-LDFLAGS         = -nostdlib -znocombreloc -T $(EFI_LDS) -shared \
-		  -Bsymbolic -L $(EFILIB) -L $(LIB) $(EFI_CRT_OBJS) 
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
-all: $(TARGET)
+main.efi: main.o
+	$(LD) $(LDFLAGS) $< -out:$@
 
-hello.so: $(OBJS)
-	ld $(LDFLAGS) $(OBJS) -o $@ -lefi -lgnuefi
+-include $(SRCS:.c=.d)
 
-%.efi: %.so
-	objcopy -j .text -j .sdata -j .data -j .dynamic \
-		-j .dynsym  -j .rel -j .rela -j .reloc \
-		--target=efi-app-$(ARCH) $^ $@
+.PHONY: clean all default
+
+all: main.efi
